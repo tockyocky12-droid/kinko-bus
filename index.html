@@ -31,8 +31,6 @@ header{display:flex;align-items:center;gap:8px;padding-block:calc(env(safe-area-
   padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line)}
 header h1{font-size:17px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tag{display:inline-block;font-size:11px;font-weight:400;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 6px;margin-left:4px;vertical-align:2px}
-#unoff{background:var(--warn-bg);color:var(--warn-fg);border-bottom:2px solid var(--warn-line);font-size:12.5px;line-height:1.5;
-  padding:6px max(12px,env(safe-area-inset-right,0px)) 6px max(12px,env(safe-area-inset-left,0px))}
 #mapbox{position:relative;height:52vh;min-height:300px;max-height:620px}
 #map{position:absolute;inset:0;background:#dde3e0}
 .fab{position:absolute;z-index:900;border:0;background:var(--panel);color:var(--accent);box-shadow:0 2px 10px rgba(0,0,0,.25);cursor:pointer}
@@ -126,7 +124,6 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <header>
   <h1>錦江町バスナビ<span class="tag" id="vtag">試作</span></h1>
 </header>
-<div id="unoff"><b>試作です。</b>正式な時刻は、町の時刻表・鹿児島交通で確認してください。</div>
 <div id="mapbox">
   <div id="map" aria-label="バスの路線の地図"></div>
   <button id="locate" class="fab" aria-label="現在地から一番近いバス停を探す">
@@ -176,7 +173,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v4';
+const APP_VER='v5';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
