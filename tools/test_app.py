@@ -65,11 +65,20 @@ with sync_playwright() as p:
     check('7:36' in t and 'あと6分' in t, '田代麓の次のバス（7:36・あと6分）')
     pg.screenshot(path='/tmp/kb_bus_1.png', full_page=True)
 
-    # 地図のバス停を押す → 吹き出しと下の画面
+    # 地図の下の端の「次のバス」の帯（田代麓）
+    bar = pg.inner_text('#nextbar')
+    check('田代麓' in bar and '7:36' in bar and 'あと6分' in bar, '地図の帯に次のバス（7:36・あと6分）')
+    check('最終' in bar, '地図の帯に最終便が出る')
+    check('最終' in t, '下の「次のバス」にも最終便が出る')
+    # 地図のバス停を押す → 帯と下の画面が変わる（吹き出しは出さない）
     pg.evaluate("markers['神川'].fire('click')"); pg.wait_for_timeout(500)
-    pop = pg.inner_text('.leaflet-popup-content')
-    check(pg.input_value('#stop') == '神川' and '神川' in pop and '海岸線' in pop, '地図のバス停を押すと選ばれ、吹き出しが出る')
-    check('8:35' in pop, '神川の次の鹿屋方面は 8:35')
+    bar = pg.inner_text('#nextbar')
+    check(pg.input_value('#stop') == '神川' and '神川' in bar and '海岸線' in bar, '地図のバス停を押すと選ばれ、帯が変わる')
+    check('8:35' in bar, '神川の次の鹿屋方面は 8:35')
+    check(pg.locator('.leaflet-popup').count() == 0, '吹き出しは出さない')
+    # 凡例は2段に折り返して、すべて画面内に収まる
+    w = pg.evaluate("Math.max(...[...document.querySelectorAll('.chip')].map(c=>c.getBoundingClientRect().right))")
+    check(w <= 390, f'凡例が画面からはみ出さない（右端{w:.0f}px）')
     pg.screenshot(path='/tmp/kb_bus_pop.png')
 
     # 現在地から一番近いバス停（大根占のそばに置いた）
