@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#f6f4ee"/><g transform="translate(51.2 51.2) scale(.8)"><rect width="512" height="512" fill="#f6f4ee"/>
+  <!-- 背景に3色の路線 -->
+  <path d="M-140 150 C 120 120, 220 190, 652 110" fill="none" stroke="#1d4ed8" stroke-width="30" stroke-linecap="round" opacity=".9"/>
+  <path d="M-140 240 C 140 200, 260 260, 652 210" fill="none" stroke="#ea6c00" stroke-width="30" stroke-linecap="round" opacity=".9"/>
+  <path d="M-140 440 C 160 420, 320 450, 652 420" fill="none" stroke="#15803d" stroke-width="30" stroke-linecap="round"/>
+  <!-- 横向きのバス（緑） -->
+  <g transform="translate(64 186)">
+    <path d="M0 40 Q0 0 40 0 H330 Q372 0 380 40 L392 150 Q394 182 362 182 H24 Q0 182 0 158 Z" fill="#1f6f4a" stroke="#f6f4ee" stroke-width="10"/>
+    <rect x="24" y="26" width="70" height="62" rx="10" fill="#f6f4ee"/>
+    <rect x="106" y="26" width="70" height="62" rx="10" fill="#f6f4ee"/>
+    <rect x="188" y="26" width="70" height="62" rx="10" fill="#f6f4ee"/>
+    <path d="M272 26 H340 Q358 26 362 44 L370 106 H272 Z" fill="#f6f4ee"/>
+    <rect x="276" y="112" width="4" height="62" fill="#145236"/>
+    <rect x="0" y="112" width="270" height="16" fill="#f59e0b"/>
+    <circle cx="374" cy="140" r="9" fill="#f59e0b"/>
+    <circle cx="86" cy="186" r="38" fill="#17201a" stroke="#f6f4ee" stroke-width="8"/><circle cx="86" cy="186" r="13" fill="#f6f4ee"/>
+    <circle cx="306" cy="186" r="38" fill="#17201a" stroke="#f6f4ee" stroke-width="8"/><circle cx="306" cy="186" r="13" fill="#f6f4ee"/>
+  </g>
+</g></svg>
