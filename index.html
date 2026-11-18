@@ -187,7 +187,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v11';
+const APP_VER='v12';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -427,6 +427,13 @@ const zcls=()=>{const z=map.getZoom(),c=map.getContainer().classList;c.toggle('z
 map.on('zoomend',zcls);zcls();
 
 // バス停を選んだとき：下の画面と、地図の下の端の「次のバス」を更新する（v10から吹き出しはやめて帯にまとめた）
+// 開いたときの地図：選んだバス停のまわり（田代麓から花瀬橋が入るくらい）を、帯に隠れないように見せる
+const OPEN_ZOOM=12;
+function showStopArea(s){
+  if(!STOP_POS[s])return;
+  map.setView(STOP_POS[s],OPEN_ZOOM,{animate:false});
+  map.panBy([0,Math.round(nbar.offsetHeight/2)],{animate:false});
+}
 function selectStop(s,{fly=false}={}){
   sel.value=s;store.set('stop',s);open=null;mode='auto';tab='next';render();
   if(fly&&STOP_POS[s])map.setView(STOP_POS[s],Math.max(map.getZoom(),13));
@@ -453,8 +460,9 @@ function locate(auto){
     let best=null,bd=Infinity;ALL.forEach(s=>{if(!STOP_POS[s])return;const d=dist(ll,STOP_POS[s]);if(d<bd){bd=d;best=s}});
     if(!best||bd>15000){if(!auto){showMe(ll);map.setView(ll,13);toast('近くに、このアプリのバス停がありません')}return}
     showMe(ll);
-    map.fitBounds(L.latLngBounds([ll,STOP_POS[best]]),{paddingTopLeft:[60,60],paddingBottomRight:[70,nbar.offsetHeight+30],maxZoom:16});
     selectStop(best);
+    if(auto)showStopArea(best);
+    else map.fitBounds(L.latLngBounds([ll,STOP_POS[best]]),{paddingTopLeft:[60,60],paddingBottomRight:[70,nbar.offsetHeight+30],maxZoom:16});
     toast(`一番近いバス停：${best}（直線で約${bd<1000?Math.round(bd/10)*10+'m':(bd/1000).toFixed(1)+'km'}）`);
   },err=>{lbtn.classList.remove('busy');if(!auto)toast(err.code===1?'位置情報の利用が許可されていません。ブラウザの設定で許可してください':'現在地を取得できませんでした')},
   auto?{enableHighAccuracy:false,maximumAge:300000,timeout:10000}:{enableHighAccuracy:true,maximumAge:30000,timeout:20000});
@@ -480,6 +488,7 @@ document.getElementById('clr').onclick=async()=>{
 };
 
 render();
+showStopArea(sel.value);
 setInterval(()=>{if(mode==='auto')render();else renderBar()},30000);
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
 </script>
