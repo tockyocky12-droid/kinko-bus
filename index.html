@@ -172,7 +172,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     <p><b>このアプリは試作中の非公式のものです。</b>正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
     <p><b>出典と更新日</b><br>
     時刻：<a id="srcpdf" target="_blank" rel="noopener">錦江町関連バスの運行時刻表</a>（錦江町、<span id="srcrev"></span>）から書き写し。確認日：<span id="srcchk"></span><br>
-    根占〜佐多間コミュニティバス：南大隅町「南大隅町コミュニティバス交通利用案内」（令和8年10月1日〜）から書き写し。確認日：2026年11月18日。問い合わせ：南大隅町役場 企画観光課 0994-24-3113<br>
+    根占〜佐多間コミュニティバス：<a id="satapdf" target="_blank" rel="noopener">南大隅町コミュニティバス交通利用案内</a>（南大隅町、令和8年10月1日〜）から書き写し。確認日：2026年11月18日。問い合わせ：南大隅町役場 企画観光課 0994-24-3113<br>
     バス停の位置・路線の道すじ：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。道すじは途中のバス停を結んだ目安で、実際の道とは少し違います。<br>
     背景の地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
     <p>年末年始などの運休は時刻表に書かれていないため、反映していません。祝日は自動で判定しています。<br>
@@ -188,12 +188,13 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v13';
+const APP_VER='v14';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
 document.getElementById('srcrev').textContent=TIMETABLE_INFO.revised;
 document.getElementById('srcchk').textContent=TIMETABLE_INFO.checked;
+document.getElementById('satapdf').href=SATA_INFO.url;
 
 // 端末に保存する記録（同じサイトの森林ナビ・防災ナビと分けるため「bus:」を付ける）
 const store={get(k){try{return localStorage.getItem('bus:'+k)}catch(e){return null}},set(k,v){try{localStorage.setItem('bus:'+k,v)}catch(e){}}};

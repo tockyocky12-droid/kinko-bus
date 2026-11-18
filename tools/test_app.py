@@ -92,6 +92,7 @@ with sync_playwright() as p:
     check('根占で鹿児島交通の路線バスに接続' in t2, '根占での接続の印が出る')
     pg.select_option('#stop', '根占'); pg.wait_for_timeout(300)
     check('佐多方面' in pg.inner_text('#v-next'), '根占から佐多方面の便が出る')
+    check(pg.get_attribute('#satapdf','href').endswith('/kotsu/documents/nejimesaigo.pdf'), '根占〜佐多の出典に南大隅町のPDFへのリンク')
     # セレクトで選ぶ（中央線の壱崎）・時刻表タブ
     pg.select_option('#stop', '壱崎'); pg.wait_for_timeout(400)
     check('中央線' in pg.inner_text('#v-next'), '壱崎で中央線が出る')

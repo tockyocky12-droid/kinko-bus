@@ -16,7 +16,9 @@ const KAIGAN=['根占','ネッピー館','根占港','大根占','神川','坂�
 const CHUO=['根占','ネッピー館','大根占','花ノ木','田代麓','壱崎','池田','真戸原','吾平','名主','川西','田崎','市役所前','鹿屋'];
 // 根占〜佐多間コミュニティバス（南大隅町・令和8年10月1日〜）。平日のみ・無料・フリー乗降
 // 出典：南大隅町「南大隅町コミュニティバス交通利用案内」PDF から書き写し（確認日 2026-11-18）
-const SATA_INFO={revised:'令和8年10月1日〜',checked:'2026年11月18日',tel:'南大隅町役場 企画観光課 0994-24-3113'};
+// https://www.town.minamiosumi.lg.jp/kikaku/kurashi/kotsu/documents/nejimesaigo.pdf
+const SATA_INFO={revised:'令和8年10月1日〜',checked:'2026年11月18日',tel:'南大隅町役場 企画観光課 0994-24-3113',
+  url:'https://www.town.minamiosumi.lg.jp/kikaku/kurashi/kotsu/documents/nejimesaigo.pdf'};
 const SATA=['石蔵','Aコープ前','片野坂','大浜','根占','ネッピー館','南大隅町役場本庁'];
 const SETSU_UP='根占で鹿児島交通の路線バスに接続',SETSU_DN='根占で鹿児島交通の路線バスから接続';
 const SATA_UP='石蔵で佐多地区のバスから接続',SATA_DN='石蔵で佐多地区のバスへ接続';
