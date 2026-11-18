@@ -96,7 +96,12 @@ with sync_playwright() as p:
     # 大根占：詳しい画面は鹿屋方面が上
     pg.select_option('#stop', '大根占'); pg.wait_for_timeout(300)
     dn = pg.eval_on_selector_all('#v-next .grp-h .dn', 'e=>e.map(x=>x.textContent)')
-    check(dn[:2] == ['鹿屋方面', '鹿屋方面'], f'大根占の詳しい画面は鹿屋方面が上（{dn}）')
+    check(dn[0] == '鹿屋方面' and dn.count('鹿屋方面') == 1 and dn.count('根占方面') == 1, f'大根占：鹿屋方面が上で、海岸線・中央線を1つにまとめる（{dn}）')
+    g = pg.inner_text('#v-next .grp >> nth=0')
+    check('海岸線' in g and '中央線' in g, '鹿屋方面の便に路線の印が付く')
+    tt = pg.eval_on_selector_all('#v-next .grp >> nth=0 >> .trip .tt', 'e=>e.map(x=>x.textContent)')
+    m = [int(a)*60+int(b) for a,b in (x.split(':') for x in tt)]
+    check(m == sorted(m), f'まとめた便は時刻順（{len(m)}便）')
     # セレクトで選ぶ（中央線の壱崎）・時刻表タブ
     pg.select_option('#stop', '壱崎'); pg.wait_for_timeout(400)
     check('中央線' in pg.inner_text('#v-next'), '壱崎で中央線が出る')
@@ -118,7 +123,7 @@ with sync_playwright() as p:
     t = pg.inner_text('#v-next')
     check('土日祝の時刻' in pg.inner_text('#daylbl'), '土曜は土日祝の時刻')
     check('6:12' not in t and '15:35' in t, '土日祝運休の便は出ず、土日祝のみの便は出る')
-    check('土日祝は、このバス停から鹿屋方面の便はありません' in t, '中央線は土日祝に走らないと出る')
+    check('中央線は、土日祝はこのバス停から鹿屋方面へ走りません' in t, '中央線は土日祝に走らないと出る')
     check('土日祝のみ' not in t and '土日祝運休' not in t, '「今日」の表示では曜日の印を出さない')
     pg.click('.seg button[data-mode="weekday"]'); t = pg.inner_text('#v-next')
     check('土日祝運休' in t, '「平日」を選ぶと「土日祝運休」の印が出る')

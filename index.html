@@ -93,6 +93,7 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .trip .row{display:flex;align-items:baseline;gap:10px}
 .trip .tt{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;min-width:3.2em}
 .trip .dst{flex:1;font-size:14px;min-width:8em}
+.rtag{display:inline-block;font-size:11.5px;font-weight:700;line-height:1.5;padding:0 6px;border-radius:4px;color:#fff;vertical-align:1px}
 .trip .tags{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 0 74px}
 .b{font-size:12px;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
 .b.chg{color:var(--warn-fg);background:var(--warn-bg);border-color:var(--warn-line)}
@@ -188,7 +189,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v16';
+const APP_VER='v17';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -248,6 +249,19 @@ function departures(me,hol){
   return out;
 }
 
+// 同じ方面（例：鹿屋方面の海岸線と中央線）は1つにまとめ、時刻順に並べる
+function mergedDeps(me,hol){
+  const g=new Map();
+  departures(me,hol).forEach(({r,D,today})=>{
+    if(!g.has(D.name))g.set(D.name,{name:D.name,routes:[],today:[]});
+    const x=g.get(D.name);x.routes.push(r);today.forEach(it=>x.today.push({...it,r,D}));
+  });
+  return [...g.values()].map(x=>(x.today.sort((a,b)=>mins(a.t.at[me])-mins(b.t.at[me])),x));
+}
+// まとめた方面の色（路線が2つ以上なら、色を縦に分ける）
+const stripe=rs=>rs.length<2?rs[0].color:'linear-gradient(to bottom,'+rs.map((r,i)=>`${r.color} ${i*100/rs.length}% ${(i+1)*100/rs.length}%`).join(',')+')';
+const rtag=r=>`<span class="rtag" style="background:${r.color}">${esc(r.short)}</span>`;
+
 // ---- 下の時刻の画面 ----
 const sel=document.getElementById('stop');
 STOP_GROUPS.forEach(([lbl,list])=>{const g=document.createElement('optgroup');g.label=lbl;
@@ -282,15 +296,15 @@ function lastLine(today,nx,me){
 const nbar=document.getElementById('nextbar'),NB_MAX=3;
 function renderBar(){
   const s=sel.value,now=jstNow(),hol=isHoliday(now);
-  const rows=departures(s,hol).map(({r,D,today})=>{const nx=today.find(({t})=>mins(t.at[s])>=now.min);return {r,D,today,nx,m:nx?mins(nx.t.at[s]):1e9}})
+  const rows=mergedDeps(s,hol).map(({name,routes,today})=>{const nx=today.find(({t})=>mins(t.at[s])>=now.min);return {name,routes,today,nx,m:nx?mins(nx.t.at[s]):1e9}})
     .filter(x=>x.today.length).sort((a,b)=>a.m-b.m);
   let h=`<div class="nb-h"><span>${esc(s)} から</span><small>${rows.filter(x=>x.nx).length>NB_MAX?'ほか'+(rows.filter(x=>x.nx).length-NB_MAX)+'方面・':''}くわしく ▼</small></div>`;
   if(!rows.length)h+=`<div class="nb-end">今日、ここから出る便はありません。</div>`;
   const live=rows.filter(x=>x.nx);
   if(rows.length&&!live.length)h+=`<div class="nb-end">今日の便は、すべて終わりました。</div>`;
-  live.slice(0,NB_MAX).forEach(({r,D,today,nx})=>{
+  live.slice(0,NB_MAX).forEach(({name,routes,today,nx})=>{
     const ls=today[today.length-1],last=ls===nx?'<span class="lastone">これが最終</span>':`最終 <b>${ls.t.at[s]}</b>`;
-    h+=`<div class="nb-r"><i style="background:${r.color}"></i><div class="nb-d"><div>${esc(D.name)}</div><div class="sub">${esc(r.short)}・${last}</div></div>`
+    h+=`<div class="nb-r"><i style="background:${stripe(routes)}"></i><div class="nb-d"><div>${esc(name)}</div><div class="sub">${esc(nx.r.short)}・${last}</div></div>`
       +`<div class="nb-t"><b>${nx.t.at[s]}</b><span>${left(mins(nx.t.at[s])-now.min)}</span></div></div>`;
   });
   nbar.innerHTML=h;nbar.hidden=false;
@@ -308,16 +322,19 @@ function render(){
   const me=sel.value;
   let h='';
   // 詳しい画面は、利用の多い「鹿屋方面」を上にする（ほかは今までの順）
-  departures(me,hol).sort((x,y)=>(y.D.name==='鹿屋方面')-(x.D.name==='鹿屋方面')).forEach(({r,D,today})=>{
-    h+=`<div class="grp"><div class="grp-h"><i style="background:${r.color}"></i><div><span class="rt">${esc(r.name)}</span><span class="dn">${esc(D.name)}</span></div></div>`;
-    if(r.note)h+=`<p class="rnote">${esc(r.note)}</p>`;
-    if(!today.length){h+=`<div class="none">${hol?'土日祝':'平日'}は、このバス停から${esc(D.name)}の便はありません。</div></div>`;return}
+  // 同じ方面は路線をまとめて時刻順（便ごとに路線の印を付ける）
+  mergedDeps(me,hol).sort((x,y)=>(y.name==='鹿屋方面')-(x.name==='鹿屋方面')).forEach(({name,routes,today})=>{
+    const multi=routes.length>1;
+    h+=`<div class="grp"><div class="grp-h"><i style="background:${stripe(routes)}"></i><div><span class="rt">${multi?routes.map(r=>esc(r.short)).join('・'):esc(routes[0].name)}</span><span class="dn">${esc(name)}</span></div></div>`;
+    routes.forEach(r=>{if(r.note)h+=`<p class="rnote">${multi?esc(r.short)+'：':''}${esc(r.note)}</p>`});
+    if(multi&&today.length)routes.filter(r=>!today.some(it=>it.r===r)).forEach(r=>{h+=`<div class="none">${esc(r.short)}は、${hol?'土日祝':'平日'}はこのバス停から${esc(name)}へ走りません。</div>`});
+    if(!today.length){h+=`<div class="none">${hol?'土日祝':'平日'}は、このバス停から${esc(name)}の便はありません。</div></div>`;return}
     if(live){const nx=today.find(({t})=>mins(t.at[me])>=now.min);
-      h+=nx?`<div class="next"><div class="lbl">次のバス</div><div class="t">${nx.t.at[me]}<small>発</small></div><div>${esc(nx.t.last)}行き・${nx.t.at[nx.t.last]}着</div><div class="in">${left(mins(nx.t.at[me])-now.min)}</div>${lastLine(today,nx,me)}</div>`
-        :`<div class="none">今日の${esc(D.name)}の便は終わりました。</div>`}
-    today.forEach(({t,key})=>{
+      h+=nx?`<div class="next"><div class="lbl">次のバス</div><div class="t">${nx.t.at[me]}<small>発</small></div><div>${multi?rtag(nx.r)+' ':''}${esc(nx.t.last)}行き・${nx.t.at[nx.t.last]}着</div><div class="in">${left(mins(nx.t.at[me])-now.min)}</div>${lastLine(today,nx,me)}</div>`
+        :`<div class="none">今日の${esc(name)}の便は終わりました。</div>`}
+    today.forEach(({t,key,r,D})=>{
       const past=live&&mins(t.at[me])<now.min;
-      h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${esc(t.last)}行き・${t.at[t.last]}着</span></div>${badges(t,open===key)}`;
+      h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${multi?rtag(r)+' ':''}${esc(t.last)}行き・${t.at[t.last]}着</span></div>${badges(t,open===key)}`;
       if(open===key){
         h+='<ul class="stops">'+D.stops.map((s,i)=>t.times[i]==='>'?`<li class="pass"><b></b>${esc(s)}（通過）</li>`:t.times[i]?`<li class="${s===me?'me':''}"><b>${t.times[i]}</b>${esc(s)}</li>`:'').join('')+'</ul>';
         if(t.link)h+=`<div class="lnk">${t.dir==='a'?'鹿屋で垂水方面へ乗り継ぎ：':'垂水方面から鹿屋で乗り継ぎ：'}${esc(t.link)}</div>`}
