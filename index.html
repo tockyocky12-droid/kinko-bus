@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>錦江町バスナビ（試作）</title>
+<title>きんこうバスナビ｜錦江町のバス時刻と路線地図（試作）</title>
+<meta name="description" content="錦江町（鹿児島県肝属郡）のコミュニティバス・路線バス（海岸線・中央線）・鹿児島中央駅直行バス・根占〜佐多間のバスの、次のバスと時刻表を地図で見られます。大根占・田代麓・神川・根占などのバス停に対応。">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1f6f4a">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="錦江町バスナビ">
+<meta name="apple-mobile-web-app-title" content="きんこうバスナビ">
 <link rel="stylesheet" href="./lib/leaflet-1.9.4/leaflet.css">
 <style>
 /* 文字は端末の文字を使う（Webフォントを読まず、通信量を抑える） */
@@ -30,6 +31,7 @@ button{font:inherit}
 header{display:flex;align-items:center;gap:8px;padding-block:calc(env(safe-area-inset-top,0px) + 8px) 8px;
   padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line)}
 header h1{font-size:17px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.town{font-size:12px;font-weight:400;color:var(--muted);margin-left:6px}
 .tag{display:inline-block;font-size:11px;font-weight:400;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 6px;margin-left:4px;vertical-align:2px}
 #mapbox{position:relative;height:60vh;min-height:340px;max-height:700px}
 #map{position:absolute;inset:0;background:#dde3e0}
@@ -136,7 +138,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 </head>
 <body>
 <header>
-  <h1>錦江町バスナビ<span class="tag" id="vtag">試作</span></h1>
+  <h1>きんこうバスナビ<span class="town">錦江町</span><span class="tag" id="vtag">試作</span></h1>
 </header>
 <div id="mapbox">
   <div id="map" aria-label="バスの路線の地図"></div>
@@ -189,7 +191,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v17';
+const APP_VER='v18';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;

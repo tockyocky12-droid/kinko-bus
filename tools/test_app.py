@@ -1,4 +1,4 @@
-"""錦江町バスナビの動作確認（Playwright）。
+"""きんこうバスナビ（錦江町）の動作確認（Playwright）。
 
 使い方（リポジトリの1つ上のフォルダで）:
   python3 -m http.server 8765 &
@@ -52,6 +52,7 @@ with sync_playwright() as p:
     pg.clock.install(time=datetime.datetime.fromisoformat('2026-11-19T07:30:00+09:00'))
     pg.goto(URL); pg.wait_for_timeout(1200)
     check(pg.inner_text('#vtag') == '試作 ' + av, '見出しに版が出ている')
+    check(pg.inner_text('header h1').startswith('きんこうバスナビ') and '錦江町' in pg.title() and '錦江町' in pg.get_attribute('meta[name=description]','content'), '名前はきんこうバスナビ、題名と説明文に錦江町')
     check(pg.locator('#unoff').count()==0 and '試作中の非公式' in pg.inner_text('footer'), '上部の帯なし・非公式の注意は下部に表示')
     check(any('/xyz/pale/' in u for u in log), '淡色地図を読む')
     n_lines = pg.evaluate('Object.keys(lines).length')
