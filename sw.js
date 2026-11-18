@@ -1,6 +1,6 @@
 // きんこうバスナビ（錦江町のバス）：オフラインでも開けるようにするための仕組み（錦江町森林ナビの sw.js を元にしている）
 // 更新のたびに VER を上げる（index.html の APP_VER と必ず同じにする）
-const VER='v18';
+const VER='v19';
 const BASE=new URL(self.registration.scope).pathname; // 例：/kinko-bus/
 const PFX='bus';                                       // 同じサイトにある森林ナビ・防災ナビの保存分と分けるための名前の頭
 const SHELL=PFX+'-shell-'+VER;
@@ -37,7 +37,8 @@ async function cacheFirst(req,cacheName,max){
   if(m)return m;
   const r=await fetch(req);
 
-  if(r&&r.type!=='opaque'&&r.ok){c.put(req,r.clone()).then(()=>{if(max)trimCache(c,max)}).catch(()=>{})}
+  // 404（海の上など、地図画像のない場所）も覚えておき、毎回問い合わせない（通信量の節約）。画面は粗い画像で代わりに出す
+  if(r&&r.type!=='opaque'&&(r.ok||(cacheName===TILES&&r.status===404))){c.put(req,r.clone()).then(()=>{if(max)trimCache(c,max)}).catch(()=>{})}
   return r;
 }
 let trimming=false;

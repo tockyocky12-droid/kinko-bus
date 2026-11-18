@@ -191,7 +191,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v18';
+const APP_VER='v19';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -444,7 +444,8 @@ function updateMap(me){
 }
 // 町全体が見えるように（直行バスの鹿児島市内側は、路線ボタンで表示）
 const homeBounds=L.latLngBounds([...LINE_PATHS.tashiro,...LINE_PATHS.chuo,...LINE_PATHS.kaigan]);
-map.fitBounds(homeBounds,{padding:[16,16]});
+// 最初から選んだバス停のまわりを出す（町全体を出してから移ると、使わない地図画像まで読んでしまうため）
+map.setView(STOP_POS[sel.value]||homeBounds.getCenter(),STOP_POS[sel.value]?12:10);
 const zcls=()=>{const z=map.getZoom(),c=map.getContainer().classList;c.toggle('zlow',z<12);c.toggle('zmid',z>=12&&z<14)};
 map.on('zoomend',zcls);zcls();
 
