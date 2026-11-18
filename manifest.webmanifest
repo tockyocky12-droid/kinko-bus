@@ -1,0 +1,18 @@
+{
+  "name": "錦江町バスナビ（試作）",
+  "short_name": "錦江町バスナビ",
+  "description": "錦江町のコミュニティバス・路線バスの時刻と路線を地図で確認する試作アプリ",
+  "id": "kinko-bus-app",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f5f2",
+  "theme_color": "#1f6f4a",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

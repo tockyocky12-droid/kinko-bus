@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>錦江町バスナビ（試作）</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f6f4a">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="錦江町バスナビ">
+<link rel="stylesheet" href="./lib/leaflet-1.9.4/leaflet.css">
+<style>
+/* 文字は端末の文字を使う（Webフォントを読まず、通信量を抑える） */
+:root{
+  --bg:#f3f5f2; --panel:#fff; --fg:#17201a; --muted:#5d6a61; --line:#d8ded9;
+  --accent:#1f6f4a; --accent-fg:#fff; --soft:#e6f2ea; --warn-bg:#fff4d6; --warn-fg:#6b3d00; --warn-line:#f0b429; --past:#a3ada6;
+  --f:"BIZ UDGothic","Hiragino Sans","Yu Gothic UI","Yu Gothic","Noto Sans JP",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#111613; --panel:#1a211c; --fg:#e8eee9; --muted:#9aa89e; --line:#2e3a32; --accent:#6fcf9b; --accent-fg:#0b1a11; --soft:#1f3328;
+  --warn-bg:#3a2a07; --warn-fg:#ffd98a; --warn-line:#a87412; --past:#5c6a61; color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);font-size:16px;line-height:1.5}
+button{font:inherit}
+header{display:flex;align-items:center;gap:8px;padding-block:calc(env(safe-area-inset-top,0px) + 8px) 8px;
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{display:inline-block;font-size:11px;font-weight:400;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 6px;margin-left:4px;vertical-align:2px}
+#unoff{background:var(--warn-bg);color:var(--warn-fg);border-bottom:2px solid var(--warn-line);font-size:12.5px;line-height:1.5;
+  padding:6px max(12px,env(safe-area-inset-right,0px)) 6px max(12px,env(safe-area-inset-left,0px))}
+#mapbox{position:relative;height:52vh;min-height:300px;max-height:620px}
+#map{position:absolute;inset:0;background:#dde3e0}
+.fab{position:absolute;z-index:900;border:0;background:var(--panel);color:var(--accent);box-shadow:0 2px 10px rgba(0,0,0,.25);cursor:pointer}
+#locate{right:12px;bottom:26px;width:50px;height:50px;border-radius:50%;display:grid;place-items:center}
+#locate svg{width:26px;height:26px}
+#locate.busy{opacity:.6}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 4px;-webkit-overflow-scrolling:touch}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
+.chip i{display:inline-block;width:20px;height:6px;border-radius:3px}
+.chip i.dash{background:repeating-linear-gradient(90deg,currentColor 0 5px,transparent 5px 9px)!important}
+main{max-width:680px;margin:0 auto;padding:4px 12px 40px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0}
+label.sel{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;border:2px solid var(--accent);border-radius:10px;background:var(--panel);color:var(--fg)}
+.day{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:14px}
+.day .today{font-weight:700}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:auto}
+.seg button{font-size:13px;border:0;background:transparent;color:var(--fg);padding:6px 10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.notice{background:var(--warn-bg);color:var(--warn-fg);border-left:4px solid var(--warn-line);border-radius:8px;padding:8px 12px;font-size:13.5px;margin:8px 0}
+.notice b{display:block}
+.notice ul{margin:2px 0 0;padding-left:1.2em}
+.tabs{display:flex;gap:6px;margin:12px 0 4px}
+.tabs button{flex:1;font-size:15px;font-weight:700;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.grp{margin-top:16px}
+.grp-h{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+.grp-h i{flex:none;width:6px;align-self:stretch;border-radius:3px}
+.grp-h .rt{display:block;font-size:12.5px;color:var(--muted)}
+.grp-h .dn{display:block;font-size:16.5px;font-weight:700}
+.rnote{font-size:12.5px;color:var(--warn-fg);margin:0 0 6px}
+.next{background:var(--soft);border:2px solid var(--accent);border-radius:12px;padding:10px 14px;margin-bottom:6px}
+.next .lbl{font-size:13px;color:var(--muted)}
+.next .t{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.next .t small{font-size:16px;font-weight:400;margin-left:4px}
+.next .in{font-size:15px;font-weight:700;color:var(--accent)}
+.none{color:var(--muted);font-size:14px;padding:6px 2px}
+.trip{display:block;width:100%;text-align:left;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:6px 0;cursor:pointer}
+.trip .row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.trip .tt{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;min-width:3.2em}
+.trip .dst{flex:1;font-size:14px;min-width:8em}
+.b{font-size:11px;border-radius:999px;padding:0 6px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
+.b.chg{color:var(--warn-fg);background:var(--warn-bg);border-color:var(--warn-line)}
+.b.link{color:var(--accent);border-color:var(--accent)}
+.trip.past{opacity:.5}
+.trip.past .tt{color:var(--past)}
+.stops{margin:8px 0 2px;padding:0;list-style:none;border-left:3px solid var(--accent);font-size:14px}
+.stops li{display:flex;gap:10px;padding:2px 0 2px 10px}
+.stops li b{font-variant-numeric:tabular-nums;min-width:3em}
+.stops li.me{background:var(--soft);font-weight:700;border-radius:0 6px 6px 0}
+.stops li.pass{color:var(--muted);font-size:12.5px}
+.lnk{font-size:13px;margin:6px 0 2px;padding:6px 10px;border-radius:8px;background:var(--soft)}
+.rsel{display:flex;gap:6px;overflow-x:auto;margin:12px 0 4px;padding-bottom:4px}
+.rsel button{flex:none;font-size:13.5px;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
+.rsel button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+h3{font-size:15.5px;margin:16px 0 6px}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table{border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:5px 8px;white-space:nowrap;text-align:center}
+th:first-child,td:first-child{position:sticky;left:0;background:var(--panel);text-align:left;font-weight:700;border-right:1px solid var(--line)}
+thead th{font-size:11.5px;color:var(--muted);font-weight:400;line-height:1.3}
+td.chg{background:var(--warn-bg);color:var(--warn-fg)}
+td.pass{color:var(--muted);font-size:11px}
+th.me,td.me{background:var(--soft)}
+td.chg.me{background:var(--warn-bg)}
+.legend{font-size:12.5px;color:var(--muted);margin:6px 2px}
+footer{margin-top:24px;font-size:12.5px;color:var(--muted);line-height:1.75}
+footer a{color:var(--accent)}
+footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12.5px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:1300;background:rgba(20,28,36,.92);color:#fff;
+  padding:9px 16px;border-radius:999px;font-size:13.5px;max-width:calc(100% - 32px);text-align:center}
+#toast[hidden]{display:none}
+/* 地図の上の文字 */
+.leaflet-container{font-family:var(--f)}
+.leaflet-tooltip.lbl{background:rgba(255,255,255,.88);border:0;box-shadow:none;padding:0 4px;border-radius:4px;font-size:12px;color:#17201a;font-weight:700}
+.leaflet-tooltip.lbl::before{display:none}
+.leaflet-tooltip.lbl.minor{font-weight:400}
+.zlow .leaflet-tooltip.lbl.minor,.zlow .leaflet-tooltip.lbl.mid,.zmid .leaflet-tooltip.lbl.minor{display:none}
+.leaflet-popup-content{margin:10px 12px;font-size:13.5px;line-height:1.5;min-width:200px}
+.pp-h{font-size:16px;font-weight:700;margin-bottom:4px}
+.pp-r{display:flex;gap:6px;align-items:baseline;border-top:1px solid #e3e7e4;padding:4px 0}
+.pp-r i{flex:none;width:10px;height:10px;border-radius:2px;align-self:center}
+.pp-r .d{flex:1}
+.pp-r b{font-variant-numeric:tabular-nums}
+.pp-r small{color:#5d6a61}
+.pp-more{display:block;width:100%;margin-top:6px;border:0;border-radius:8px;background:#1f6f4a;color:#fff;padding:7px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <h1>錦江町バスナビ<span class="tag" id="vtag">試作</span></h1>
+</header>
+<div id="unoff"><b>試作です。</b>正式な時刻は、町の時刻表・鹿児島交通で確認してください。</div>
+<div id="mapbox">
+  <div id="map" aria-label="バスの路線の地図"></div>
+  <button id="locate" class="fab" aria-label="現在地から一番近いバス停を探す">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+  </button>
+</div>
+<div class="chips" id="chips" aria-label="路線（押すとその路線を地図に合わせる）"></div>
+
+<main id="panel">
+  <div class="card">
+    <label class="sel" for="stop">乗るバス停（地図のバス停を押しても選べます）</label>
+    <select id="stop"></select>
+    <div class="day"><span>表示：<span class="today" id="daylbl"></span></span>
+      <div class="seg" role="group" aria-label="ダイヤ">
+        <button data-mode="auto">今日</button><button data-mode="weekday">平日</button><button data-mode="holiday">土日祝</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice"><b>令和8年10月1日から時刻が変わった便があります</b>
+    <ul><li>根占〜垂水中央病院線は廃止になりました。鹿屋で乗り換えてください。</li><li>佐多〜根占間は廃止になりました。</li></ul>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-next" aria-selected="true">次のバス</button>
+    <button role="tab" id="tab-all" aria-selected="false">時刻表</button>
+  </div>
+  <section id="v-next"></section>
+  <section id="v-all" hidden></section>
+
+  <footer>
+    <p><b>このアプリは試作中の非公式のものです。</b>錦江町役場の職員が、時刻案内を見やすくする提案のために作っています。正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
+    <p><b>出典と更新日</b><br>
+    時刻：<a id="srcpdf" target="_blank" rel="noopener">錦江町関連バスの運行時刻表</a>（錦江町、<span id="srcrev"></span>）から書き写し。確認日：<span id="srcchk"></span><br>
+    バス停の位置・路線の道すじ：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。道すじは途中のバス停を結んだ目安で、実際の道とは少し違います。<br>
+    背景の地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
+    <p>年末年始などの運休は時刻表に書かれていないため、反映していません。祝日は自動で判定しています。<br>
+    田代地区コミュニティバスは無料です。路線バス・直行バスの運賃と問い合わせ：鹿児島交通株式会社 鹿屋営業所 0994-65-2258</p>
+    <p><button id="clr" class="pbtn">保存した地図の画像を消す</button></p>
+    <p>版 <span id="ver"></span></p>
+  </footer>
+</main>
+<div id="toast" hidden role="status"></div>
+
+<script src="./lib/leaflet-1.9.4/leaflet.js"></script>
+<script src="./data/timetable.js"></script>
+<script src="./data/stops.js"></script>
+<script>
+// アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
+const APP_VER='v1';
+document.getElementById('ver').textContent=APP_VER;
+document.getElementById('vtag').textContent='試作 '+APP_VER;
+document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
+document.getElementById('srcrev').textContent=TIMETABLE_INFO.revised;
+document.getElementById('srcchk').textContent=TIMETABLE_INFO.checked;
+
+// 端末に保存する記録（同じサイトの森林ナビ・防災ナビと分けるため「bus:」を付ける）
+const store={get(k){try{return localStorage.getItem('bus:'+k)}catch(e){return null}},set(k,v){try{localStorage.setItem('bus:'+k,v)}catch(e){}}};
+const toastEl=document.getElementById('toast');let tt;
+function toast(t){toastEl.textContent=t;toastEl.hidden=false;clearTimeout(tt);tt=setTimeout(()=>toastEl.hidden=true,3500)}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---- 時刻表を、停留所ごとの時刻に直す（通過は at に入れない） ----
+const mins=s=>{const [h,m]=s.split(':').map(Number);return h*60+m};
+ROUTES.forEach(r=>r.trips.forEach(t=>{const st=r.dirs[t.dir].stops;t.at={};t.seq=[];
+  t.times.forEach((v,i)=>{if(v&&v!=='>'){t.at[st[i]]=v;t.seq.push(st[i])}});
+  t.last=t.seq[t.seq.length-1];t.tags=t.tags||[]}));
+const ROUTES_AT={};ROUTES.forEach(r=>Object.values(r.dirs).forEach(d=>d.stops.forEach(s=>{(ROUTES_AT[s]=ROUTES_AT[s]||new Set()).add(r.id)})));
+const STOP_GROUPS=[['田代地区コミュニティバスのバス停',TASHIRO],['路線バス・直行バスのバス停',[...new Set([...KAIGAN,...CHUO,...DIRECT])].filter(s=>!TASHIRO.includes(s))]];
+const ALL=STOP_GROUPS.flatMap(g=>g[1]);
+
+// ---- 今日の日付と、平日か土日祝か（日本時間・祝日は計算で判定） ----
+function jstNow(){const p={};new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',hourCycle:'h23',weekday:'short'})
+  .formatToParts(new Date()).forEach(x=>p[x.type]=x.value);
+  return {y:+p.year,m:+p.month,d:+p.day,min:+p.hour*60+ +p.minute,wd:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday)}}
+const hcache={};
+function holidays(y){
+  if(hcache[y])return hcache[y];
+  const s=new Set(),add=(m,d)=>s.add(m+'-'+d),wd=(m,d)=>new Date(Date.UTC(y,m-1,d)).getUTCDay();
+  const nthMon=(m,n)=>{let d=1;while(wd(m,d)!==1)d++;return d+7*(n-1)};
+  [[1,1],[2,11],[2,23],[4,29],[5,3],[5,4],[5,5],[8,11],[11,3],[11,23]].forEach(([m,d])=>add(m,d));
+  add(1,nthMon(1,2));add(7,nthMon(7,3));add(9,nthMon(9,3));add(10,nthMon(10,2));
+  add(3,Math.floor(20.8431+0.242194*(y-1980)-Math.floor((y-1980)/4)));
+  add(9,Math.floor(23.2488+0.242194*(y-1980)-Math.floor((y-1980)/4)));
+  const k=x=>(x.getUTCMonth()+1)+'-'+x.getUTCDate();
+  for(let i=1;i<365;i++){const a=new Date(Date.UTC(y,0,i)),b=new Date(Date.UTC(y,0,i+1)),c=new Date(Date.UTC(y,0,i+2));
+    if(s.has(k(a))&&!s.has(k(b))&&s.has(k(c))&&b.getUTCDay()!==0)s.add(k(b))} // 国民の休日
+  [...s].forEach(key=>{const [m,d]=key.split('-').map(Number);if(wd(m,d)===0){let x=new Date(Date.UTC(y,m-1,d+1));
+    while(s.has(k(x)))x=new Date(x.getTime()+864e5);s.add(k(x))}}); // 振替休日
+  return hcache[y]=s;
+}
+const isHoliday=n=>n.wd===0||n.wd===6||holidays(n.y).has(n.m+'-'+n.d);
+const runs=(t,hol)=>!(hol&&t.days==='weekday')&&!(!hol&&t.days==='holiday');
+const left=n=>n<60?'あと'+n+'分':'あと'+Math.floor(n/60)+'時間'+(n%60)+'分';
+const WD='日月火水木金土';
+
+// あるバス停から出る便（路線・方向ごと）
+function departures(me,hol){
+  const out=[];
+  ROUTES.forEach((r,ri)=>Object.entries(r.dirs).forEach(([dk,D])=>{
+    const at=D.stops.indexOf(me);if(at<0||at===D.stops.length-1)return;
+    const list=r.trips.map((t,i)=>({t,key:ri+'-'+i})).filter(({t})=>t.dir===dk&&t.at[me]&&t.last!==me);
+    if(!list.length)return; // 通過するだけ
+    out.push({r,dk,D,today:list.filter(({t})=>runs(t,hol)).sort((a,b)=>mins(a.t.at[me])-mins(b.t.at[me]))});
+  }));
+  return out;
+}
+
+// ---- 下の時刻の画面 ----
+const sel=document.getElementById('stop');
+STOP_GROUPS.forEach(([lbl,list])=>{const g=document.createElement('optgroup');g.label=lbl;
+  list.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;g.append(o)});sel.append(g)});
+{const sv=store.get('stop');sel.value=sv&&ALL.includes(sv)?sv:'田代麓'}
+let mode='auto',open=null,tab='next',route=store.get('route')||'tashiro';
+if(!ROUTES.some(r=>r.id===route))route='tashiro';
+sel.onchange=()=>selectStop(sel.value,{fly:true});
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;render()});
+const tabs={next:document.getElementById('tab-next'),all:document.getElementById('tab-all')};
+Object.entries(tabs).forEach(([k,b])=>b.onclick=()=>{tab=k;render()});
+const badges=t=>(t.changed?'<span class="b chg">10/1から変更</span>':'')+(t.days==='weekday'?'<span class="b">土日祝運休</span>':'')+(t.days==='holiday'?'<span class="b">土日祝のみ</span>':'')
+  +t.tags.map(x=>`<span class="b">${esc(x)}</span>`).join('')+(t.link?`<span class="b link">${t.dir==='a'?'垂水へ乗り継ぎ':'垂水から乗り継ぎ'}</span>`:'');
+
+function render(){
+  const now=jstNow(),hol=mode==='auto'?isHoliday(now):mode==='holiday',live=mode==='auto';
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===mode));
+  document.getElementById('daylbl').textContent=live?`${now.m}月${now.d}日（${WD[now.wd]}）${hol?'土日祝':'平日'}の時刻`:(hol?'土日祝':'平日')+'の時刻';
+  for(const [k,b] of Object.entries(tabs)){b.setAttribute('aria-selected',k===tab);document.getElementById('v-'+k).hidden=k!==tab}
+  const me=sel.value;
+  let h='';
+  departures(me,hol).forEach(({r,D,today})=>{
+    h+=`<div class="grp"><div class="grp-h"><i style="background:${r.color}"></i><div><span class="rt">${esc(r.name)}</span><span class="dn">${esc(D.name)}</span></div></div>`;
+    if(r.note)h+=`<p class="rnote">${esc(r.note)}</p>`;
+    if(!today.length){h+=`<div class="none">${hol?'土日祝':'平日'}は、このバス停から${esc(D.name)}の便はありません。</div></div>`;return}
+    if(live){const nx=today.find(({t})=>mins(t.at[me])>=now.min);
+      h+=nx?`<div class="next"><div class="lbl">次のバス</div><div class="t">${nx.t.at[me]}<small>発</small></div><div>${esc(nx.t.last)}行き・${nx.t.at[nx.t.last]}着</div><div class="in">${left(mins(nx.t.at[me])-now.min)}</div></div>`
+        :`<div class="none">今日の${esc(D.name)}の便は終わりました。</div>`}
+    today.forEach(({t,key})=>{
+      const past=live&&mins(t.at[me])<now.min;
+      h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${esc(t.last)}行き・${t.at[t.last]}着</span>${badges(t)}</div>`;
+      if(open===key){
+        h+='<ul class="stops">'+D.stops.map((s,i)=>t.times[i]==='>'?`<li class="pass"><b></b>${esc(s)}（通過）</li>`:t.times[i]?`<li class="${s===me?'me':''}"><b>${t.times[i]}</b>${esc(s)}</li>`:'').join('')+'</ul>';
+        if(t.link)h+=`<div class="lnk">${t.dir==='a'?'鹿屋で垂水方面へ乗り継ぎ：':'垂水方面から鹿屋で乗り継ぎ：'}${esc(t.link)}</div>`}
+      h+='</button>';
+    });
+    h+='</div>';
+  });
+  if(!h)h='<div class="none">このバス停から出る便はありません（終点です）。</div>';
+  const vn=document.getElementById('v-next');vn.innerHTML=h;
+  vn.querySelectorAll('.trip').forEach(b=>b.onclick=()=>{const k=b.dataset.k;open=open===k?null:k;render()});
+  // 時刻表（路線別）
+  const R=ROUTES.find(r=>r.id===route);
+  let a='<div class="rsel" role="group" aria-label="路線">'+ROUTES.map(r=>`<button data-r="${r.id}" aria-pressed="${r.id===route}">${esc(r.short)}</button>`).join('')+'</div>';
+  a+=`<h3>${esc(R.name)}</h3>`;if(R.note)a+=`<p class="rnote">${esc(R.note)}</p>`;
+  Object.entries(R.dirs).forEach(([dk,D])=>{
+    const ts=R.trips.filter(t=>t.dir===dk);
+    a+=`<h3>▶ ${esc(D.name)}</h3><div class="tblwrap"><table><thead><tr><th>停留所</th>${ts.map((t,k)=>`<th>${k+1}便${t.days==='weekday'?'<br>土日祝運休':t.days==='holiday'?'<br>土日祝のみ':''}${t.tags.length?'<br>'+t.tags.map(esc).join(' '):''}</th>`).join('')}</tr></thead><tbody>`;
+    D.stops.forEach((s,i)=>{a+=`<tr><th class="${s===me?'me':''}">${esc(s)}</th>${ts.map(t=>{const v=t.times[i];
+      return `<td class="${v==='>'?'pass':''}${t.changed&&v&&v!=='>'?' chg':''}${s===me?' me':''}">${v==='>'?'通過':v||'―'}</td>`}).join('')}</tr>`});
+    a+='</tbody></table></div>';
+    const links=ts.map((t,k)=>t.link?`<li>${k+1}便：${esc(t.link)}</li>`:'').join('');
+    if(links)a+=`<p class="legend">${dk==='a'?'鹿屋で垂水方面へ乗り継ぎ':'垂水方面から鹿屋で乗り継ぎ'}</p><ul class="legend">${links}</ul>`;
+  });
+  a+='<p class="legend">黄色の時刻は、令和8年10月1日から変わった便です。緑の行は、選んだバス停です。</p>';
+  const va=document.getElementById('v-all');va.innerHTML=a;
+  va.querySelectorAll('.rsel button').forEach(b=>b.onclick=()=>{route=b.dataset.r;store.set('route',route);render()});
+  updateMap(me);
+}
+
+// ---- 地図 ----
+const map=L.map('map',{zoomControl:true,preferCanvas:false,maxZoom:18,minZoom:9});
+map.attributionControl.setPrefix(false);
+const gsiAttr='<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>';
+// 地図の画像が読めないとき（圏外で、保存していない拡大レベルなど）は、1〜4段階粗い画像を引き伸ばして出す（森林ナビと同じ仕組み）
+const FallbackTileLayer=L.TileLayer.extend({
+  createTile(coords,done){
+    const wrap=document.createElement('div');wrap.style.overflow='hidden';
+    const img=document.createElement('img');img.alt='';img.setAttribute('role','presentation');img.draggable=false;
+    img.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;max-width:none;user-select:none';
+    img.crossOrigin='anonymous'; // 中身の見える形で保存する（見えない形＝opaqueだとChromeが1件約7MBと数える）
+    wrap.appendChild(img);
+    const url=(z,x,y)=>this._url.replace('{z}',z).replace('{x}',x).replace('{y}',y);
+    let dz=0;
+    const load=()=>{
+      if(!dz){img.src=url(coords.z,coords.x,coords.y);return}
+      const n=1<<dz,px=coords.x>>dz,py=coords.y>>dz,sz=this.getTileSize();
+      img.style.width=sz.x*n+'px';img.style.height=sz.y*n+'px';
+      img.style.left=-(coords.x-px*n)*sz.x+'px';img.style.top=-(coords.y-py*n)*sz.y+'px';
+      img.src=url(coords.z-dz,px,py);
+    };
+    img.onload=()=>done(null,wrap);
+    img.onerror=()=>{if(dz<4&&coords.z-dz>9){dz++;load()}else done(new Error('tile'),wrap)};
+    load();return wrap;
+  }
+});
+new FallbackTileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{maxZoom:18,attribution:gsiAttr,updateWhenZooming:false,keepBuffer:1}).addTo(map);
+
+// 路線の線（白いふち＋色）
+// 同じ道を複数の路線が通る区間は、先に描いた路線の上に、あとの路線を破線で重ねる（色が順に並んで見える）
+const DRAW_ORDER=['chuo','kaigan','tashiro','direct'];
+const segKey=(a,b)=>[a.join(','),b.join(',')].sort().join('|');
+const cover={}; // 区間 → その区間を通る路線（描く順）
+DRAW_ORDER.forEach(id=>{const pts=LINE_PATHS[id]||[];for(let i=0;i<pts.length-1;i++){const k=segKey(pts[i],pts[i+1]);(cover[k]=cover[k]||[]).push(id)}});
+const lines={};
+DRAW_ORDER.forEach(id=>{
+  const pts=LINE_PATHS[id];if(!pts)return;
+  const r=ROUTES.find(x=>x.id===id),pieces=[];
+  // 区間ごとに「何本重なるうちの何番目か」で分ける
+  const runs=[];let cur=null;
+  for(let i=0;i<pts.length-1;i++){
+    const c=cover[segKey(pts[i],pts[i+1])],n=c.length,k=c.indexOf(id),tag=k===0?'own':n+'-'+k;
+    if(!cur||cur.tag!==tag){cur={tag,n,k,pts:[pts[i]]};runs.push(cur)}
+    cur.pts.push(pts[i+1]);
+  }
+  runs.forEach(run=>{
+    const top=run.k>0;
+    const dash=id==='direct'?'2 10':top?`10 ${10*(run.n-1)}`:null;
+    if(!top)pieces.push({l:L.polyline(run.pts,{color:'#fff',weight:10,opacity:.9,interactive:false,dashArray:id==='direct'?dash:null}).addTo(map),casing:true});
+    pieces.push({l:L.polyline(run.pts,{color:r.color,weight:6,opacity:1,interactive:false,dashArray:dash,dashOffset:top?String(-10*(run.k-1)):null,lineCap:top?'butt':'round'}).addTo(map)});
+  });
+  lines[id]=pieces;
+});
+// バス停（時刻表に載っているバス停だけ）
+// 名前の出し方：MAJOR はいつも、MID は少し拡大したら、そのほかはさらに拡大したら出す（重なりを防ぐ）
+const MAJOR=new Set(['内之牧','花瀬橋','田代麓','大根占','根占','神川','鹿屋','吾平','垂水港','鹿児島中央駅']);
+const LEFT_LABEL=new Set(['ネッピー館','根占港','鹿児島中央駅']); // 名前を左側に出すバス停
+const MID=new Set(['花ノ木','南大隅高校前','ネッピー館','坂元','真戸原','壱崎','名主','市役所前','金生町（山形屋）','新田','上原']);
+const markers={};
+ALL.forEach(s=>{
+  const p=STOP_POS[s];if(!p)return;
+  const rs=[...(ROUTES_AT[s]||[])],xf=rs.length>1,col=xf?'#17201a':ROUTES.find(r=>r.id===rs[0]).color;
+  const m=L.circleMarker(p,{radius:xf?8:6,color:col,weight:xf?3.5:3,fillColor:'#fff',fillOpacity:1,bubblingMouseEvents:false}).addTo(map);
+  const lft=LEFT_LABEL.has(s);
+  m.bindTooltip(s,{permanent:true,direction:lft?'left':'right',offset:[lft?-8:8,0],className:'lbl'+(MAJOR.has(s)?'':MID.has(s)?' mid':' minor')});
+  m.on('click',()=>selectStop(s,{popup:true}));
+  markers[s]=m;
+});
+let selRing=null;
+function updateMap(me){
+  const on=ROUTES_AT[me]||new Set();
+  for(const [id,ps] of Object.entries(lines)){const w=on.has(id)?9:6;ps.forEach(p=>p.l.setStyle({weight:p.casing?w+4:w}))}
+  if(selRing)selRing.remove();
+  if(STOP_POS[me])selRing=L.circleMarker(STOP_POS[me],{radius:16,color:'#1f6f4a',weight:3,fillColor:'#1f6f4a',fillOpacity:.2,interactive:false}).addTo(map);
+  if(markers[me])markers[me].bringToFront();
+}
+// 町全体が見えるように（直行バスの鹿児島市内側は、路線ボタンで表示）
+const homeBounds=L.latLngBounds([...LINE_PATHS.tashiro,...LINE_PATHS.chuo,...LINE_PATHS.kaigan]);
+map.fitBounds(homeBounds,{padding:[16,16]});
+const zcls=()=>{const z=map.getZoom(),c=map.getContainer().classList;c.toggle('zlow',z<12);c.toggle('zmid',z>=12&&z<14)};
+map.on('zoomend',zcls);zcls();
+
+// バス停を選んだとき：下の画面を更新し、地図には「次のバス」の吹き出しを出す
+function popupHtml(s){
+  const now=jstNow(),hol=isHoliday(now);
+  let h=`<div class="pp-h">${esc(s)}</div>`;
+  const deps=departures(s,hol);
+  if(!deps.length)h+='<div class="pp-r"><span class="d">ここから出る便はありません（終点）</span></div>';
+  deps.forEach(({r,D,today})=>{
+    const nx=today.find(({t})=>mins(t.at[s])>=now.min);
+    h+=`<div class="pp-r"><i style="background:${r.color}"></i><span class="d">${esc(r.short)}<br><small>${esc(D.name)}</small></span>`
+      +(nx?`<span><b>${nx.t.at[s]}</b> <small>${left(mins(nx.t.at[s])-now.min)}</small></span>`:`<small>今日は終了</small>`)+'</div>';
+  });
+  return h+'<button class="pp-more" type="button">時刻をくわしく見る</button>';
+}
+function selectStop(s,{popup=false,fly=false}={}){
+  sel.value=s;store.set('stop',s);open=null;mode='auto';tab='next';render();
+  if(fly&&STOP_POS[s])map.setView(STOP_POS[s],Math.max(map.getZoom(),13));
+  if((popup||fly)&&markers[s]){markers[s].bindPopup(popupHtml(s),{autoPanPaddingTopLeft:[56,16],autoPanPaddingBottomRight:[70,16]}).openPopup()}
+}
+map.on('popupopen',e=>{const b=e.popup.getElement().querySelector('.pp-more');if(b)b.onclick=()=>document.getElementById('panel').scrollIntoView({behavior:'smooth'})});
+
+// 路線のボタン（押すと、その路線全体が見えるように地図を合わせる）
+{const box=document.getElementById('chips');
+  ROUTES.forEach(r=>{const b=document.createElement('button');b.className='chip';b.type='button';
+    b.innerHTML=`<i class="${r.id==='direct'?'dash':''}" style="background:${r.color};color:${r.color}"></i>${esc(r.short)}`;
+    b.onclick=()=>{map.fitBounds(L.latLngBounds(LINE_PATHS[r.id]),{padding:[24,24]});route=r.id;store.set('route',route);render()};
+    box.append(b)});
+  const h=document.createElement('button');h.className='chip';h.type='button';h.textContent='町全体';h.onclick=()=>map.fitBounds(homeBounds,{padding:[16,16]});box.append(h)}
+
+// ---- 現在地から一番近いバス停 ----
+const dist=(a,b)=>{const R=6371008,r=Math.PI/180,dl=(b[0]-a[0])*r,dg=(b[1]-a[1])*r,x=Math.sin(dl/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(x)))};
+let meDot=null;const lbtn=document.getElementById('locate');
+lbtn.onclick=()=>{
+  if(!navigator.geolocation){toast('この端末では現在地が使えません');return}
+  lbtn.classList.add('busy');toast('現在地を調べています…');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    lbtn.classList.remove('busy');
+    const ll=[pos.coords.latitude,pos.coords.longitude];
+    if(meDot)meDot.remove();
+    meDot=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#2563eb',fillOpacity:1,interactive:false}).addTo(map);
+    let best=null,bd=Infinity;ALL.forEach(s=>{if(!STOP_POS[s])return;const d=dist(ll,STOP_POS[s]);if(d<bd){bd=d;best=s}});
+    if(!best||bd>15000){map.setView(ll,13);toast('近くに、このアプリのバス停がありません');return}
+    map.fitBounds(L.latLngBounds([ll,STOP_POS[best]]),{padding:[60,60],maxZoom:16});
+    selectStop(best,{popup:true});
+    toast(`一番近いバス停：${best}（直線で約${bd<1000?Math.round(bd/10)*10+'m':(bd/1000).toFixed(1)+'km'}）`);
+  },err=>{lbtn.classList.remove('busy');toast(err.code===1?'位置情報の利用が許可されていません。ブラウザの設定で許可してください':'現在地を取得できませんでした')},
+  {enableHighAccuracy:true,maximumAge:30000,timeout:20000});
+};
+
+// ---- 保存した地図の画像を消す ----
+document.getElementById('clr').onclick=async()=>{
+  if(!('caches' in window))return;
+  let n=0;for(const k of await caches.keys())if(k.startsWith('bus-tiles-')){await caches.delete(k);n++}
+  toast(n?'保存した地図の画像を消しました':'保存した地図の画像はありません');
+};
+
+render();
+setInterval(()=>{if(mode==='auto')render()},30000);
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+</script>
+</body>
+</html>
