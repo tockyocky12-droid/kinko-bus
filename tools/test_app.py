@@ -93,6 +93,10 @@ with sync_playwright() as p:
     pg.select_option('#stop', '根占'); pg.wait_for_timeout(300)
     check('佐多方面' in pg.inner_text('#v-next'), '根占から佐多方面の便が出る')
     check(pg.get_attribute('#satapdf','href').endswith('/kotsu/documents/nejimesaigo.pdf'), '根占〜佐多の出典に南大隅町のPDFへのリンク')
+    # 大根占：詳しい画面は鹿屋方面が上
+    pg.select_option('#stop', '大根占'); pg.wait_for_timeout(300)
+    dn = pg.eval_on_selector_all('#v-next .grp-h .dn', 'e=>e.map(x=>x.textContent)')
+    check(dn[:2] == ['鹿屋方面', '鹿屋方面'], f'大根占の詳しい画面は鹿屋方面が上（{dn}）')
     # セレクトで選ぶ（中央線の壱崎）・時刻表タブ
     pg.select_option('#stop', '壱崎'); pg.wait_for_timeout(400)
     check('中央線' in pg.inner_text('#v-next'), '壱崎で中央線が出る')

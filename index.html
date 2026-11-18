@@ -188,7 +188,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v15';
+const APP_VER='v16';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -307,7 +307,8 @@ function render(){
   for(const [k,b] of Object.entries(tabs)){b.setAttribute('aria-selected',k===tab);document.getElementById('v-'+k).hidden=k!==tab}
   const me=sel.value;
   let h='';
-  departures(me,hol).forEach(({r,D,today})=>{
+  // 詳しい画面は、利用の多い「鹿屋方面」を上にする（ほかは今までの順）
+  departures(me,hol).sort((x,y)=>(y.D.name==='鹿屋方面')-(x.D.name==='鹿屋方面')).forEach(({r,D,today})=>{
     h+=`<div class="grp"><div class="grp-h"><i style="background:${r.color}"></i><div><span class="rt">${esc(r.name)}</span><span class="dn">${esc(D.name)}</span></div></div>`;
     if(r.note)h+=`<p class="rnote">${esc(r.note)}</p>`;
     if(!today.length){h+=`<div class="none">${hol?'土日祝':'平日'}は、このバス停から${esc(D.name)}の便はありません。</div></div>`;return}
