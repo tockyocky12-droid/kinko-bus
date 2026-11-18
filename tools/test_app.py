@@ -95,6 +95,11 @@ with sync_playwright() as p:
     check('土日祝の時刻' in pg.inner_text('#daylbl'), '土曜は土日祝の時刻')
     check('6:12' not in t and '15:35' in t, '土日祝運休の便は出ず、土日祝のみの便は出る')
     check('土日祝は、このバス停から鹿屋方面の便はありません' in t, '中央線は土日祝に走らないと出る')
+    check('土日祝のみ' not in t and '土日祝運休' not in t, '「今日」の表示では曜日の印を出さない')
+    pg.click('.seg button[data-mode="weekday"]'); t = pg.inner_text('#v-next')
+    check('土日祝運休' in t, '「平日」を選ぶと「土日祝運休」の印が出る')
+    order = pg.evaluate("[...document.querySelectorAll('#v-next .trip')].map(b=>[...b.querySelectorAll('.tags .b')].map(x=>x.textContent)).find(a=>a.length>=3)")
+    check(order is not None and order[0] == '土日祝運休' and order[1] == '鹿屋工業経由' and order[2].startswith('押すと垂水'), f'印は決まった順で時刻の下に並ぶ {order}')
     ctx.close()
 
     # ---- 3. オフライン（サービスワーカー） ----

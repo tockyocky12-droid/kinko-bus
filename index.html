@@ -71,10 +71,11 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .next .in{font-size:15px;font-weight:700;color:var(--accent)}
 .none{color:var(--muted);font-size:14px;padding:6px 2px}
 .trip{display:block;width:100%;text-align:left;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:6px 0;cursor:pointer}
-.trip .row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.trip .row{display:flex;align-items:baseline;gap:10px}
 .trip .tt{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;min-width:3.2em}
 .trip .dst{flex:1;font-size:14px;min-width:8em}
-.b{font-size:11px;border-radius:999px;padding:0 6px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
+.trip .tags{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 0 74px}
+.b{font-size:12px;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
 .b.chg{color:var(--warn-fg);background:var(--warn-bg);border-color:var(--warn-line)}
 .b.link{color:var(--accent);border-color:var(--accent)}
 .trip.past{opacity:.5}
@@ -175,7 +176,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v3';
+const APP_VER='v4';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -245,8 +246,18 @@ sel.onchange=()=>selectStop(sel.value,{fly:true});
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;render()});
 const tabs={next:document.getElementById('tab-next'),all:document.getElementById('tab-all')};
 Object.entries(tabs).forEach(([k,b])=>b.onclick=()=>{tab=k;render()});
-const badges=t=>(t.changed?'<span class="b chg">10/1から変更</span>':'')+(t.days==='weekday'?'<span class="b">土日祝運休</span>':'')+(t.days==='holiday'?'<span class="b">土日祝のみ</span>':'')
-  +t.tags.map(x=>`<span class="b">${esc(x)}</span>`).join('')+(t.link?`<span class="b link">${t.dir==='a'?'垂水へ乗り継ぎ':'垂水から乗り継ぎ'}</span>`:'');
+// 便の印。並び順はいつも「変更 → 運休 → 経由 → 乗り継ぎ」で、時刻の下の行にまとめる
+// 色：黄＝10月1日に変わった便、灰＝補足、緑＝押すと乗り継ぎ時刻が見られる
+// 「今日」の表示では、その日に走る便だけを出しているので、曜日の印（土日祝運休など）は出さない
+function badges(t,isOpen){
+  const b=[];
+  if(t.changed)b.push('<span class="b chg">10/1から変更</span>');
+  if(mode!=='auto'&&t.days==='weekday')b.push('<span class="b">土日祝運休</span>');
+  if(mode!=='auto'&&t.days==='holiday')b.push('<span class="b">土日祝のみ</span>');
+  t.tags.forEach(x=>b.push(`<span class="b">${esc(x)}</span>`));
+  if(t.link)b.push(`<span class="b link">押すと垂水${t.dir==='a'?'へ':'から'}の乗り継ぎ時刻 ${isOpen?'▲':'▼'}</span>`);
+  return b.length?`<div class="tags">${b.join('')}</div>`:'';
+}
 
 function render(){
   const now=jstNow(),hol=mode==='auto'?isHoliday(now):mode==='holiday',live=mode==='auto';
@@ -264,7 +275,7 @@ function render(){
         :`<div class="none">今日の${esc(D.name)}の便は終わりました。</div>`}
     today.forEach(({t,key})=>{
       const past=live&&mins(t.at[me])<now.min;
-      h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${esc(t.last)}行き・${t.at[t.last]}着</span>${badges(t)}</div>`;
+      h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${esc(t.last)}行き・${t.at[t.last]}着</span></div>${badges(t,open===key)}`;
       if(open===key){
         h+='<ul class="stops">'+D.stops.map((s,i)=>t.times[i]==='>'?`<li class="pass"><b></b>${esc(s)}（通過）</li>`:t.times[i]?`<li class="${s===me?'me':''}"><b>${t.times[i]}</b>${esc(s)}</li>`:'').join('')+'</ul>';
         if(t.link)h+=`<div class="lnk">${t.dir==='a'?'鹿屋で垂水方面へ乗り継ぎ：':'垂水方面から鹿屋で乗り継ぎ：'}${esc(t.link)}</div>`}
