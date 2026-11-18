@@ -155,7 +155,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
   </div>
 
   <footer>
-    <p><b>このアプリは試作中の非公式のものです。</b>錦江町役場の職員が、時刻案内を見やすくする提案のために作っています。正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
+    <p><b>このアプリは試作中の非公式のものです。</b>正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
     <p><b>出典と更新日</b><br>
     時刻：<a id="srcpdf" target="_blank" rel="noopener">錦江町関連バスの運行時刻表</a>（錦江町、<span id="srcrev"></span>）から書き写し。確認日：<span id="srcchk"></span><br>
     バス停の位置・路線の道すじ：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。道すじは途中のバス停を結んだ目安で、実際の道とは少し違います。<br>
@@ -173,7 +173,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v5';
+const APP_VER='v6';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
