@@ -19,7 +19,7 @@ const rev=a=>[...a].reverse();
 const KK='鹿屋工業経由';
 
 const ROUTES=[
-  {id:'tashiro',name:'コミュニティバス（田代地区・無料）',short:'コミバス',color:'#15803d',
+  {id:'tashiro',name:'コミュニティバス（田代地区・無料）',short:'コミュバス',color:'#15803d',
     dirs:{down:{name:'大根占・南大隅高校前方面',stops:TASHIRO},up:{name:'内之牧方面',stops:rev(TASHIRO)}},
     trips:[
       {dir:'down',days:'weekday',times:['','','','','','','','','','','','','6:02','6:11','6:18','']},
