@@ -173,7 +173,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v8';
+const APP_VER='v9';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -415,22 +415,34 @@ map.on('popupopen',e=>{const b=e.popup.getElement().querySelector('.pp-more');if
 // ---- 現在地から一番近いバス停 ----
 const dist=(a,b)=>{const R=6371008,r=Math.PI/180,dl=(b[0]-a[0])*r,dg=(b[1]-a[1])*r,x=Math.sin(dl/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(x)))};
 let meDot=null;const lbtn=document.getElementById('locate');
-lbtn.onclick=()=>{
-  if(!navigator.geolocation){toast('この端末では現在地が使えません');return}
-  lbtn.classList.add('busy');toast('現在地を調べています…');
+// auto=true はアプリを開いたときの自動の呼び出し（失敗しても何も言わず、今のバス停のまま）
+function locate(auto){
+  if(!navigator.geolocation){if(!auto)toast('この端末では現在地が使えません');return}
+  lbtn.classList.add('busy');if(!auto)toast('現在地を調べています…');
   navigator.geolocation.getCurrentPosition(pos=>{
     lbtn.classList.remove('busy');
     const ll=[pos.coords.latitude,pos.coords.longitude];
-    if(meDot)meDot.remove();
-    meDot=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#2563eb',fillOpacity:1,interactive:false}).addTo(map);
     let best=null,bd=Infinity;ALL.forEach(s=>{if(!STOP_POS[s])return;const d=dist(ll,STOP_POS[s]);if(d<bd){bd=d;best=s}});
-    if(!best||bd>15000){map.setView(ll,13);toast('近くに、このアプリのバス停がありません');return}
+    if(!best||bd>15000){if(!auto){showMe(ll);map.setView(ll,13);toast('近くに、このアプリのバス停がありません')}return}
+    showMe(ll);
     map.fitBounds(L.latLngBounds([ll,STOP_POS[best]]),{padding:[60,60],maxZoom:16});
     selectStop(best,{popup:true});
     toast(`一番近いバス停：${best}（直線で約${bd<1000?Math.round(bd/10)*10+'m':(bd/1000).toFixed(1)+'km'}）`);
-  },err=>{lbtn.classList.remove('busy');toast(err.code===1?'位置情報の利用が許可されていません。ブラウザの設定で許可してください':'現在地を取得できませんでした')},
-  {enableHighAccuracy:true,maximumAge:30000,timeout:20000});
-};
+  },err=>{lbtn.classList.remove('busy');if(!auto)toast(err.code===1?'位置情報の利用が許可されていません。ブラウザの設定で許可してください':'現在地を取得できませんでした')},
+  auto?{enableHighAccuracy:false,maximumAge:300000,timeout:10000}:{enableHighAccuracy:true,maximumAge:30000,timeout:20000});
+}
+function showMe(ll){if(meDot)meDot.remove();meDot=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#2563eb',fillOpacity:1,interactive:false}).addTo(map)}
+lbtn.onclick=()=>locate(false);
+// 開いたときに最寄りのバス停を出す。
+// ・位置情報がすでに許可されている → 自動で調べる
+// ・まだ聞いていない → 初めて開いたとき（前に選んだバス停の記録がないとき）だけ聞く
+// ・断られている → 何もしない（前に選んだバス停か田代麓のまま）
+(async()=>{
+  if(!navigator.geolocation)return;
+  let st='unknown';
+  try{if(navigator.permissions)st=(await navigator.permissions.query({name:'geolocation'})).state}catch(e){}
+  if(st==='granted'||(st!=='denied'&&!store.get('stop')))locate(true);
+})();
 
 // ---- 保存した地図の画像を消す ----
 document.getElementById('clr').onclick=async()=>{
