@@ -165,13 +165,14 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
   <section id="v-all" hidden></section>
 
   <div class="notice" style="margin-top:24px"><b>令和8年10月1日のダイヤ改定のお知らせ</b>
-    <ul><li>時刻が変わった便があります（時刻表では黄色で表示）。</li><li>根占〜垂水中央病院線は廃止になりました。鹿屋で乗り換えてください。</li><li>佐多〜根占間は廃止になりました。</li></ul>
+    <ul><li>時刻が変わった便があります（時刻表では黄色で表示）。</li><li>根占〜垂水中央病院線は廃止になりました。鹿屋で乗り換えてください。</li><li>佐多〜根占間の路線バスは廃止になりました。代わりに南大隅町の「根占〜佐多間コミュニティバス」（平日のみ・無料）が走っています。</li></ul>
   </div>
 
   <footer>
     <p><b>このアプリは試作中の非公式のものです。</b>正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
     <p><b>出典と更新日</b><br>
     時刻：<a id="srcpdf" target="_blank" rel="noopener">錦江町関連バスの運行時刻表</a>（錦江町、<span id="srcrev"></span>）から書き写し。確認日：<span id="srcchk"></span><br>
+    根占〜佐多間コミュニティバス：南大隅町「南大隅町コミュニティバス交通利用案内」（令和8年10月1日〜）から書き写し。確認日：2026年11月18日。問い合わせ：南大隅町役場 企画観光課 0994-24-3113<br>
     バス停の位置・路線の道すじ：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。道すじは途中のバス停を結んだ目安で、実際の道とは少し違います。<br>
     背景の地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
     <p>年末年始などの運休は時刻表に書かれていないため、反映していません。祝日は自動で判定しています。<br>
@@ -187,7 +188,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v12';
+const APP_VER='v13';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -206,7 +207,7 @@ ROUTES.forEach(r=>r.trips.forEach(t=>{const st=r.dirs[t.dir].stops;t.at={};t.seq
   t.times.forEach((v,i)=>{if(v&&v!=='>'){t.at[st[i]]=v;t.seq.push(st[i])}});
   t.last=t.seq[t.seq.length-1];t.tags=t.tags||[]}));
 const ROUTES_AT={};ROUTES.forEach(r=>Object.values(r.dirs).forEach(d=>d.stops.forEach(s=>{(ROUTES_AT[s]=ROUTES_AT[s]||new Set()).add(r.id)})));
-const STOP_GROUPS=[['田代地区コミュニティバスのバス停',TASHIRO],['路線バス・直行バスのバス停',[...new Set([...KAIGAN,...CHUO,...DIRECT])].filter(s=>!TASHIRO.includes(s))]];
+const STOP_GROUPS=[['田代地区コミュニティバスのバス停',TASHIRO],['路線バス・直行バスのバス停',[...new Set([...KAIGAN,...CHUO,...DIRECT])].filter(s=>!TASHIRO.includes(s))],['根占〜佐多間（南大隅町）のバス停',SATA.filter(s=>![...TASHIRO,...KAIGAN,...CHUO].includes(s))]];
 const ALL=STOP_GROUPS.flatMap(g=>g[1]);
 
 // ---- 今日の日付と、平日か土日祝か（日本時間・祝日は計算で判定） ----
@@ -374,7 +375,7 @@ new FallbackTileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png
 
 // 路線の線（白いふち＋色）
 // 同じ道を複数の路線が通る区間は、先に描いた路線の上に、あとの路線を破線で重ねる（色が順に並んで見える）
-const DRAW_ORDER=['chuo','kaigan','tashiro','direct'];
+const DRAW_ORDER=['chuo','kaigan','tashiro','sata','direct'];
 const segKey=(a,b)=>[a.join(','),b.join(',')].sort().join('|');
 const cover={}; // 区間 → その区間を通る路線（描く順）
 DRAW_ORDER.forEach(id=>{const pts=LINE_PATHS[id]||[];for(let i=0;i<pts.length-1;i++){const k=segKey(pts[i],pts[i+1]);(cover[k]=cover[k]||[]).push(id)}});
@@ -399,9 +400,9 @@ DRAW_ORDER.forEach(id=>{
 });
 // バス停（時刻表に載っているバス停だけ）
 // 名前の出し方：MAJOR はいつも、MID は少し拡大したら、そのほかはさらに拡大したら出す（重なりを防ぐ）
-const MAJOR=new Set(['内之牧','花瀬橋','田代麓','大根占','根占','神川','鹿屋','吾平','垂水港','鹿児島中央駅']);
-const LEFT_LABEL=new Set(['ネッピー館','根占港','鹿児島中央駅']); // 名前を左側に出すバス停
-const MID=new Set(['花ノ木','南大隅高校前','ネッピー館','坂元','真戸原','壱崎','名主','市役所前','金生町（山形屋）','新田','上原']);
+const MAJOR=new Set(['内之牧','花瀬橋','田代麓','大根占','根占','神川','鹿屋','吾平','垂水港','鹿児島中央駅','石蔵']);
+const LEFT_LABEL=new Set(['石蔵','ネッピー館','根占港','鹿児島中央駅']); // 名前を左側に出すバス停
+const MID=new Set(['花ノ木','南大隅高校前','ネッピー館','坂元','真戸原','壱崎','名主','市役所前','金生町（山形屋）','新田','上原','大浜','片野坂']);
 const markers={};
 ALL.forEach(s=>{
   const p=STOP_POS[s];if(!p)return;
@@ -429,6 +430,8 @@ map.on('zoomend',zcls);zcls();
 // バス停を選んだとき：下の画面と、地図の下の端の「次のバス」を更新する（v10から吹き出しはやめて帯にまとめた）
 // 開いたときの地図：選んだバス停のまわり（田代麓から花瀬橋が入るくらい）を、帯に隠れないように見せる
 const OPEN_ZOOM=12;
+// 地図を路線に合わせるときの余白（下は帯に隠れないように）
+const fitPad=()=>({paddingTopLeft:[24,24],paddingBottomRight:[24,(nbar.hidden?0:nbar.offsetHeight)+24]});
 function showStopArea(s){
   if(!STOP_POS[s])return;
   map.setView(STOP_POS[s],OPEN_ZOOM,{animate:false});
@@ -443,9 +446,9 @@ function selectStop(s,{fly=false}={}){
 {const box=document.getElementById('chips');
   ROUTES.forEach(r=>{const b=document.createElement('button');b.className='chip';b.type='button';
     b.innerHTML=`<i class="${r.id==='direct'?'dash':''}" style="background:${r.color};color:${r.color}"></i>${esc(r.short)}`;
-    b.onclick=()=>{map.fitBounds(L.latLngBounds(LINE_PATHS[r.id]),{padding:[24,24]});route=r.id;store.set('route',route);render()};
+    b.onclick=()=>{map.fitBounds(L.latLngBounds(LINE_PATHS[r.id]),fitPad());route=r.id;store.set('route',route);render()};
     box.append(b)});
-  const h=document.createElement('button');h.className='chip';h.type='button';h.textContent='町全体';h.onclick=()=>map.fitBounds(homeBounds,{padding:[16,16]});box.append(h)}
+  const h=document.createElement('button');h.className='chip';h.type='button';h.textContent='町全体';h.onclick=()=>map.fitBounds(homeBounds,fitPad());box.append(h)}
 
 // ---- 現在地から一番近いバス停 ----
 const dist=(a,b)=>{const R=6371008,r=Math.PI/180,dl=(b[0]-a[0])*r,dg=(b[1]-a[1])*r,x=Math.sin(dl/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(x)))};
