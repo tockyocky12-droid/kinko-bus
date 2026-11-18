@@ -1,6 +1,6 @@
 // 錦江町バスナビ：オフラインでも開けるようにするための仕組み（錦江町森林ナビの sw.js を元にしている）
 // 更新のたびに VER を上げる（index.html の APP_VER と必ず同じにする）
-const VER='v1';
+const VER='v2';
 const BASE=new URL(self.registration.scope).pathname; // 例：/kinko-bus/
 const PFX='bus';                                       // 同じサイトにある森林ナビ・防災ナビの保存分と分けるための名前の頭
 const SHELL=PFX+'-shell-'+VER;

@@ -145,16 +145,16 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     </div>
   </div>
 
-  <div class="notice"><b>令和8年10月1日から時刻が変わった便があります</b>
-    <ul><li>根占〜垂水中央病院線は廃止になりました。鹿屋で乗り換えてください。</li><li>佐多〜根占間は廃止になりました。</li></ul>
-  </div>
-
   <div class="tabs" role="tablist">
     <button role="tab" id="tab-next" aria-selected="true">次のバス</button>
     <button role="tab" id="tab-all" aria-selected="false">時刻表</button>
   </div>
   <section id="v-next"></section>
   <section id="v-all" hidden></section>
+
+  <div class="notice" style="margin-top:24px"><b>令和8年10月1日のダイヤ改定のお知らせ</b>
+    <ul><li>時刻が変わった便があります（時刻表では黄色で表示）。</li><li>根占〜垂水中央病院線は廃止になりました。鹿屋で乗り換えてください。</li><li>佐多〜根占間は廃止になりました。</li></ul>
+  </div>
 
   <footer>
     <p><b>このアプリは試作中の非公式のものです。</b>錦江町役場の職員が、時刻案内を見やすくする提案のために作っています。正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
@@ -175,7 +175,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/stops.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v1';
+const APP_VER='v2';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
