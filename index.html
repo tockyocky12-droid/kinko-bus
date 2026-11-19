@@ -76,9 +76,6 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:auto}
 .seg button{font-size:13px;border:0;background:transparent;color:var(--fg);padding:6px 10px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
-.notice{background:var(--warn-bg);color:var(--warn-fg);border-left:4px solid var(--warn-line);border-radius:8px;padding:8px 12px;font-size:13.5px;margin:8px 0}
-.notice b{display:block}
-.notice ul{margin:2px 0 0;padding-left:1.2em}
 .tabs{display:flex;gap:6px;margin:12px 0 4px}
 .tabs button{flex:1;font-size:15px;font-weight:700;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
@@ -199,10 +196,6 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
   <section id="v-next"></section>
   <section id="v-all" hidden></section>
 
-  <div class="notice" style="margin-top:24px"><b>令和8年10月1日のダイヤ改定のお知らせ</b>
-    <ul><li>根占〜垂水中央病院線は廃止になりました。鹿屋で乗り換えてください。</li><li>佐多〜根占間の路線バスは廃止になりました。代わりに南大隅町の「根占〜佐多間コミュニティバス」（平日のみ・無料）が走っています。</li></ul>
-  </div>
-
   <footer>
     <p><b>このアプリは試作中の非公式のものです。</b>正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
     <p><b>出典と更新日</b><br>
@@ -227,7 +220,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/fares.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v29';
+const APP_VER='v30';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
