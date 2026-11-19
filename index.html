@@ -196,7 +196,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/fares.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v23';
+const APP_VER='v24';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -451,18 +451,27 @@ const markers={};
 ALL.forEach(s=>{
   const p=STOP_POS[s];if(!p)return;
   const rs=[...(ROUTES_AT[s]||[])],xf=rs.length>1,col=xf?'#17201a':ROUTES.find(r=>r.id===rs[0]).color;
-  const m=L.circleMarker(p,{radius:xf?8:6,color:col,weight:xf?3.5:3,fillColor:'#fff',fillOpacity:1,bubblingMouseEvents:false}).addTo(map);
+  const m=L.circleMarker(p,{radius:xf?8:6,color:col,weight:xf?3.5:3,fillColor:'#fff',fillOpacity:1,bubblingMouseEvents:false,xf}).addTo(map);
   const lft=LEFT_LABEL.has(s);
   m.bindTooltip(s,{permanent:true,direction:lft?'left':'right',offset:[lft?-8:8,0],className:'lbl'+(MAJOR.has(s)?'':MID.has(s)?' mid':' minor')});
   m.on('click',()=>selectStop(s));
   markers[s]=m;
 });
-let selRing=null;
+let selRing=null,onRoutes=new Set();
+// 線とバス停の太さは地図の拡大率に合わせる（広く見るときは細く・小さく、選んだバス停の路線は少しだけ太く）
+const LINE_W=z=>z<=10?2.5:z<=11?3:z<=12?3.5:z<=13?4:z<=14?4.5:5;
+const DOT_R=z=>z<=10?3.5:z<=11?4.5:z<=12?5:6;
+function styleMap(){
+  const z=map.getZoom(),w0=LINE_W(z),r=DOT_R(z);
+  for(const [id,ps] of Object.entries(lines)){const w=onRoutes.has(id)?w0+1.5:w0;ps.forEach(p=>p.l.setStyle({weight:p.casing?w+3:w}))}
+  for(const [s,m] of Object.entries(markers)){const xf=m.options.xf;m.setStyle({radius:xf?r+1.5:r,weight:z<=10?2:xf?3:2.5})}
+  if(selRing)selRing.setRadius(z<=10?9:z<=12?13:15);
+}
 function updateMap(me){
-  const on=ROUTES_AT[me]||new Set();
-  for(const [id,ps] of Object.entries(lines)){const w=on.has(id)?9:6;ps.forEach(p=>p.l.setStyle({weight:p.casing?w+4:w}))}
+  onRoutes=ROUTES_AT[me]||new Set();
   if(selRing)selRing.remove();
-  if(STOP_POS[me])selRing=L.circleMarker(STOP_POS[me],{radius:16,color:'#1f6f4a',weight:3,fillColor:'#1f6f4a',fillOpacity:.2,interactive:false}).addTo(map);
+  if(STOP_POS[me])selRing=L.circleMarker(STOP_POS[me],{radius:15,color:'#1f6f4a',weight:3,fillColor:'#1f6f4a',fillOpacity:.2,interactive:false}).addTo(map);
+  styleMap();
   if(markers[me])markers[me].bringToFront();
 }
 // 町全体が見えるように（直行バスの鹿児島市内側は、路線ボタンで表示）
@@ -470,7 +479,7 @@ const homeBounds=L.latLngBounds([...LINE_PATHS.tashiro,...LINE_PATHS.chuo,...LIN
 // 最初から選んだバス停のまわりを出す（町全体を出してから移ると、使わない地図画像まで読んでしまうため）
 map.setView(STOP_POS[sel.value]||homeBounds.getCenter(),STOP_POS[sel.value]?12:10);
 const zcls=()=>{const z=map.getZoom(),c=map.getContainer().classList;c.toggle('zlow',z<12);c.toggle('zmid',z>=12&&z<14)};
-map.on('zoomend',zcls);zcls();
+map.on('zoomend',()=>{zcls();styleMap()});zcls();
 
 // バス停を選んだとき：下の画面と、地図の下の端の「次のバス」を更新する（v10から吹き出しはやめて帯にまとめた）
 // 開いたときの地図：選んだバス停のまわり（田代麓から花瀬橋が入るくらい）を、帯に隠れないように見せる
