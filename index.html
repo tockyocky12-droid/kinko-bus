@@ -124,7 +124,6 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .rtag{display:inline-block;font-size:11.5px;font-weight:700;line-height:1.5;padding:0 6px;border-radius:4px;color:#fff;vertical-align:1px}
 .trip .tags{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 0 74px}
 .b{font-size:12px;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
-.b.chg{color:var(--warn-fg);background:var(--warn-bg);border-color:var(--warn-line)}
 .b.link{color:var(--accent);border-color:var(--accent)}
 .trip.past{opacity:.5}
 .trip.past .tt{color:var(--past)}
@@ -143,10 +142,8 @@ table{border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-num
 th,td{border-bottom:1px solid var(--line);padding:5px 8px;white-space:nowrap;text-align:center}
 th:first-child,td:first-child{position:sticky;left:0;background:var(--panel);text-align:left;font-weight:700;border-right:1px solid var(--line)}
 thead th{font-size:11.5px;color:var(--muted);font-weight:400;line-height:1.3}
-td.chg{background:var(--warn-bg);color:var(--warn-fg)}
 td.pass{color:var(--muted);font-size:11px}
 th.me,td.me{background:var(--soft)}
-td.chg.me{background:var(--warn-bg)}
 .legend{font-size:12.5px;color:var(--muted);margin:6px 2px}
 footer{margin-top:24px;font-size:12.5px;color:var(--muted);line-height:1.75}
 footer a{color:var(--accent)}
@@ -203,7 +200,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
   <section id="v-all" hidden></section>
 
   <div class="notice" style="margin-top:24px"><b>令和8年10月1日のダイヤ改定のお知らせ</b>
-    <ul><li>時刻が変わった便があります（時刻表では黄色で表示）。</li><li>根占〜垂水中央病院線は廃止になりました。鹿屋で乗り換えてください。</li><li>佐多〜根占間の路線バスは廃止になりました。代わりに南大隅町の「根占〜佐多間コミュニティバス」（平日のみ・無料）が走っています。</li></ul>
+    <ul><li>根占〜垂水中央病院線は廃止になりました。鹿屋で乗り換えてください。</li><li>佐多〜根占間の路線バスは廃止になりました。代わりに南大隅町の「根占〜佐多間コミュニティバス」（平日のみ・無料）が走っています。</li></ul>
   </div>
 
   <footer>
@@ -230,7 +227,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/fares.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v28';
+const APP_VER='v29';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -371,7 +368,6 @@ Object.entries(tabs).forEach(([k,b])=>b.onclick=()=>{tab=k;render()});
 // 「今日」の表示では、その日に走る便だけを出しているので、曜日の印（土日祝運休など）は出さない
 function badges(t,isOpen){
   const b=[];
-  if(t.changed)b.push('<span class="b chg">10/1から変更</span>');
   if(mode!=='auto'&&t.days==='weekday')b.push('<span class="b">土日祝運休</span>');
   if(mode!=='auto'&&t.days==='holiday')b.push('<span class="b">土日祝のみ</span>');
   t.tags.forEach(x=>b.push(`<span class="b">${esc(x)}</span>`));
@@ -454,12 +450,12 @@ function render(){
     const ts=R.trips.filter(t=>t.dir===dk);
     a+=`<h3>▶ ${esc(D.name)}</h3><div class="tblwrap"><table><thead><tr><th>停留所</th>${ts.map((t,k)=>`<th>${k+1}便${t.days==='weekday'?'<br>土日祝運休':t.days==='holiday'?'<br>土日祝のみ':''}${t.tags.length?'<br>'+t.tags.map(esc).join(' '):''}</th>`).join('')}</tr></thead><tbody>`;
     D.stops.forEach((s,i)=>{a+=`<tr><th class="${s===me?'me':''}">${esc(s)}</th>${ts.map(t=>{const v=t.times[i];
-      return `<td class="${v==='>'?'pass':''}${t.changed&&v&&v!=='>'?' chg':''}${s===me?' me':''}">${v==='>'?'通過':v||'―'}</td>`}).join('')}</tr>`});
+      return `<td class="${v==='>'?'pass':''}${s===me?' me':''}">${v==='>'?'通過':v||'―'}</td>`}).join('')}</tr>`});
     a+='</tbody></table></div>';
     const links=ts.map((t,k)=>t.link?`<li>${k+1}便：${esc(t.link)}</li>`:'').join('');
     if(links)a+=`<p class="legend">${dk==='a'?'鹿屋で垂水方面へ乗り継ぎ':'垂水方面から鹿屋で乗り継ぎ'}</p><ul class="legend">${links}</ul>`;
   });
-  a+='<p class="legend">黄色の時刻は、令和8年10月1日から変わった便です。緑の行は、選んだバス停です。</p>';
+  a+='<p class="legend">緑の行は、選んだバス停です。</p>';
   const va=document.getElementById('v-all');va.innerHTML=a;
   va.querySelectorAll('.rsel button').forEach(b=>b.onclick=()=>{route=b.dataset.r;store.set('route',route);render()});
   updateMap(me);
