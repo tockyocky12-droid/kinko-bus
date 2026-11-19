@@ -182,7 +182,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     バス停の位置・路線の道すじ：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。道すじは途中のバス停を結んだ目安で、実際の道とは少し違います。<br>
     背景の地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
     <p>年末年始などの運休は時刻表に書かれていないため、反映していません。祝日は自動で判定しています。<br>
-    田代地区コミュニティバスは無料です。路線バス・直行バスの運賃と問い合わせ：鹿児島交通株式会社 鹿屋営業所 0994-65-2258</p>
+    田代地区コミュニティバスは無料です。路線バス・直行バスの運賃と問い合わせ：鹿児島交通株式会社 鹿屋営業所 0994-65-2258（<a href="https://www.iwasaki-corp.com/kagoshima_kotsu/contact/" target="_blank" rel="noopener">お問合せページ</a>）</p>
     <p><button id="clr" class="pbtn">保存した地図の画像を消す</button></p>
     <p>版 <span id="ver"></span></p>
   </footer>
@@ -195,7 +195,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/fares.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v20';
+const APP_VER='v21';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
