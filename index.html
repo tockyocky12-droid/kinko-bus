@@ -200,6 +200,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     <p><b>このアプリは試作中の非公式のものです。</b>正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
     <p><b>出典と更新日</b><br>
     時刻：<a id="srcpdf" target="_blank" rel="noopener">錦江町関連バスの運行時刻表</a>（錦江町、<span id="srcrev"></span>）から書き写し。確認日：<span id="srcchk"></span><br>
+    工業高校前の時刻：鹿児島交通の時刻表「(女子高前〜)鹿屋〜市役所前〜大姶良〜坂元〜大根占〜根占」「鹿屋〜吾平〜田代麓〜大根占〜根占」（2026年10月1日）から書き写し<br>
     運賃：鹿児島交通の運賃表（<a id="farepdf" target="_blank" rel="noopener">海岸線</a>・<a id="farepdf2" target="_blank" rel="noopener">中央線</a>。大人・現金の普通運賃）から書き写し。確認日：<span id="farechk"></span>。コミュニティバスと根占〜佐多間は無料。直行バスの運賃は載せていません<br>
     鹿屋〜鹿児島空港線：<a id="airpdf" target="_blank" rel="noopener">鹿児島交通「鹿屋～空港線」時刻表</a>（令和8年4月1日改正）から、鹿屋市役所前・鹿屋〜鹿児島空港の区間を書き写し。確認日：2026年11月20日<br>
     根占〜佐多間コミュニティバス：<a id="satapdf" target="_blank" rel="noopener">南大隅町コミュニティバス交通利用案内</a>（南大隅町、令和8年10月1日〜）から書き写し。確認日：2026年11月18日。問い合わせ：南大隅町役場 企画観光課 0994-24-3113<br>
@@ -220,7 +221,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/fares.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v30';
+const APP_VER='v31';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
