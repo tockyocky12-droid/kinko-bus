@@ -46,6 +46,30 @@ header h1{font-size:17px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow
 main{max-width:680px;margin:0 auto;padding:4px 12px 40px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0}
 label.sel{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+#stopbtn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;border:2px solid var(--accent);border-radius:10px;background:var(--panel);color:var(--fg);cursor:pointer;text-align:left}
+#stopbtn small{font-size:12.5px;font-weight:400;color:var(--accent);white-space:nowrap}
+.sr{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+#sheet{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+#sheet[hidden]{display:none}
+.sh-box{background:var(--panel);color:var(--fg);width:100%;max-width:640px;max-height:86vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;box-shadow:0 -4px 20px rgba(0,0,0,.3)}
+.sh-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px;font-size:16px}
+.sh-x{font-size:18px;border:0;background:none;color:var(--fg);padding:4px 8px;cursor:pointer}
+.sh-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:4px 12px 8px}
+.sh-tabs button{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13.5px;padding:6px 10px;border:1.5px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
+.sh-tabs button i{width:16px;height:5px;border-radius:3px}
+.sh-tabs button[aria-selected=true]{border-color:var(--c);background:var(--c);color:#fff;font-weight:700}
+.sh-tabs button[aria-selected=true] i{background:#fff!important}
+.sh-dir{font-size:12.5px;color:var(--muted);padding:0 16px 6px}
+.sh-list{list-style:none;margin:0;padding:0 8px 16px;overflow-y:auto}
+.sh-list li button{position:relative;display:flex;align-items:center;gap:10px;width:100%;min-height:46px;font:inherit;font-size:17px;text-align:left;padding:4px 8px 4px 40px;border:0;border-radius:8px;background:none;color:var(--fg);cursor:pointer}
+.sh-list li button::before{content:'';position:absolute;left:17px;top:0;bottom:0;width:6px;background:var(--c)}
+.sh-list li:first-child button::before{top:50%}.sh-list li:last-child button::before{bottom:50%}
+.sh-list li button::after{content:'';position:absolute;left:12px;top:50%;width:10px;height:10px;margin-top:-8px;border:3px solid var(--c);border-radius:50%;background:#fff}
+.sh-list li button.xf::after{border-color:#17201a;width:12px;height:12px;margin-top:-9px;left:11px}
+.sh-list li button.cur{background:var(--soft);font-weight:700}
+.sh-list .nm{flex:1}
+.sh-list .x{display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end}
+.sh-list .x .rtag{font-size:10.5px;padding:0 4px}
 select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;border:2px solid var(--accent);border-radius:10px;background:var(--panel);color:var(--fg)}
 .day{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:14px}
 .day .today{font-weight:700}
@@ -151,10 +175,19 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 </div>
 <div class="chips" id="chips" aria-label="路線（押すとその路線を地図に合わせる）"></div>
 
+<div id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sh-title">
+  <div class="sh-box">
+    <div class="sh-h"><b id="sh-title">乗るバス停を選ぶ</b><button type="button" class="sh-x" aria-label="閉じる">✕</button></div>
+    <div class="sh-tabs" role="tablist" aria-label="路線"></div>
+    <div class="sh-dir"></div>
+    <ul class="sh-list"></ul>
+  </div>
+</div>
 <main id="panel">
   <div class="card">
-    <label class="sel" for="stop">乗るバス停（地図のバス停を押しても選べます）</label>
-    <select id="stop"></select>
+    <div class="sel" id="stoplbl">乗るバス停（地図のバス停を押しても選べます）</div>
+    <button type="button" id="stopbtn" aria-haspopup="dialog" aria-describedby="stoplbl"><span id="stopname"></span><small>路線から選ぶ ▼</small></button>
+    <select id="stop" class="sr" tabindex="-1" aria-hidden="true"></select>
     <div class="day"><span>表示：<span class="today" id="daylbl"></span></span>
       <div class="seg" role="group" aria-label="ダイヤ">
         <button data-mode="auto">今日</button><button data-mode="weekday">平日</button><button data-mode="holiday">土日祝</button>
@@ -196,7 +229,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/fares.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v24';
+const APP_VER='v25';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -284,10 +317,36 @@ const rtag=r=>`<span class="rtag" style="background:${r.color}">${esc(r.short)}<
 const sel=document.getElementById('stop');
 STOP_GROUPS.forEach(([lbl,list])=>{const g=document.createElement('optgroup');g.label=lbl;
   list.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;g.append(o)});sel.append(g)});
-{const sv=store.get('stop');sel.value=sv&&ALL.includes(sv)?sv:'田代麓'}
+{const sv=store.get('stop');sel.value=sv&&ALL.includes(sv)?sv:'田代麓';document.getElementById('stopname').textContent=sel.value}
 let mode='auto',open=null,tab='next',route=store.get('route')||'tashiro';
 if(!ROUTES.some(r=>r.id===route))route='tashiro';
 sel.onchange=()=>selectStop(sel.value,{fly:true});
+// 乗るバス停を、路線ごとに路線図のような並びで選ぶ（下から出る画面）
+const sheet=document.getElementById('sheet'),shTabs=sheet.querySelector('.sh-tabs'),shList=sheet.querySelector('.sh-list'),shDir=sheet.querySelector('.sh-dir');
+const PICK_DIR={sata:'down'}; // 並べる向き（錦江町側から）。ほかは最初の向き
+let shRoute=null;
+function routeStops(r){const D=r.dirs[PICK_DIR[r.id]]||Object.values(r.dirs)[0];return D.stops}
+function drawSheet(){
+  const me=sel.value;
+  shTabs.innerHTML=ROUTES.map(r=>`<button type="button" role="tab" data-r="${r.id}" aria-selected="${r.id===shRoute}" style="--c:${r.color}"><i style="background:${r.color}"></i>${esc(r.short)}</button>`).join('');
+  const r=ROUTES.find(x=>x.id===shRoute),st=routeStops(r);
+  shDir.textContent=`${r.name}　${st[0]} → ${st[st.length-1]}`;
+  shList.innerHTML=st.map(s=>{const others=[...(ROUTES_AT[s]||[])].filter(id=>id!==r.id).map(id=>ROUTES.find(x=>x.id===id));
+    return `<li><button type="button" data-s="${esc(s)}" class="${s===me?'cur':''}${others.length?' xf':''}" style="--c:${r.color}"><span class="nm">${esc(s)}</span><span class="x">${others.map(rtag).join('')}</span></button></li>`}).join('');
+  shTabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{shRoute=b.dataset.r;drawSheet();shList.scrollTop=0});
+  shList.querySelectorAll('button').forEach(b=>b.onclick=()=>{closeSheet();selectStop(b.dataset.s,{fly:true})});
+}
+function openSheet(){
+  const at=[...(ROUTES_AT[sel.value]||[])];shRoute=at.includes(route)?route:(at[0]||ROUTES[0].id);
+  drawSheet();sheet.hidden=false;
+  const cur=shList.querySelector('.cur');if(cur)cur.scrollIntoView({block:'center'});
+  sheet.querySelector('.sh-tabs [aria-selected=true]').focus();
+}
+function closeSheet(){sheet.hidden=true;document.getElementById('stopbtn').focus()}
+document.getElementById('stopbtn').onclick=openSheet;
+sheet.querySelector('.sh-x').onclick=closeSheet;
+sheet.onclick=e=>{if(e.target===sheet)closeSheet()};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)closeSheet()});
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;render()});
 const tabs={next:document.getElementById('tab-next'),all:document.getElementById('tab-all')};
 Object.entries(tabs).forEach(([k,b])=>b.onclick=()=>{tab=k;render()});
@@ -492,7 +551,7 @@ function showStopArea(s){
   map.panBy([0,Math.round(nbar.offsetHeight/2)],{animate:false});
 }
 function selectStop(s,{fly=false}={}){
-  sel.value=s;store.set('stop',s);open=null;mode='auto';tab='next';render();
+  sel.value=s;document.getElementById('stopname').textContent=s;store.set('stop',s);open=null;mode='auto';tab='next';render();
   if(fly&&STOP_POS[s])map.setView(STOP_POS[s],Math.max(map.getZoom(),13));
 }
 
