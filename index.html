@@ -214,7 +214,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     鹿屋〜鹿児島空港線：<a id="airpdf" target="_blank" rel="noopener">鹿児島交通「鹿屋～空港線」時刻表</a>（令和8年4月1日改正）から、鹿屋市役所前・鹿屋〜鹿児島空港の区間を書き写し。確認日：2026年11月20日<br>
     根占〜佐多間コミュニティバス：<a id="satapdf" target="_blank" rel="noopener">南大隅町コミュニティバス交通利用案内</a>（南大隅町、令和8年10月1日〜）から書き写し。確認日：2026年11月18日。問い合わせ：南大隅町役場 企画観光課 0994-24-3113<br>
     バス停の位置：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。<br>
-    路線の道すじ：国土数値情報（バスルートデータ）平成23年度（国土交通省）の道路の線を使い、バス停どうしを道に沿ってつないで作成。目安です（鹿児島中央駅直行バスの点線は、おおよその向きです）。<br>
+    路線の道すじ：国土数値情報（バスルートデータ）平成23年度（国土交通省）の道路の線を使い、バス停どうしを道に沿ってつないで作成。目安です（直行バスの垂水港〜鴨池港はフェリーで、点線で表しています。空港バスの線は高隈・牧之原・霧島市役所前経由の道すじで、高速道路経由の便は別の道を通ります）。<br>
     背景の地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
     <p>年末年始などの運休は時刻表に書かれていないため、反映していません。祝日は自動で判定しています。<br>
     田代地区コミュニティバスは無料です。路線バス・直行バスの運賃と問い合わせ：鹿児島交通株式会社 鹿屋営業所 0994-65-2258（<a href="https://www.iwasaki-corp.com/kagoshima_kotsu/contact/" target="_blank" rel="noopener">お問合せページ</a>）</p>
@@ -230,7 +230,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/fares.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v26';
+const APP_VER='v27';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -496,7 +496,8 @@ new FallbackTileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png
 // 路線の線（白いふち＋色）
 // 同じ道を複数の路線が通る区間は、先に描いた路線の上に、あとの路線を破線で重ねる（色が順に並んで見える）
 const DRAW_ORDER=['chuo','kaigan','tashiro','sata','airport','direct'];
-const DOTTED=new Set(['direct','airport']); // 道すじではなく向きだけの点線
+const DOTTED=new Set(); // 道すじではなく向きだけの点線で描く路線（v27から、どの路線も道に沿わせたので空）
+const FERRY=new Set((typeof FERRY_SEGS!=='undefined'?FERRY_SEGS:[]).map(([a,b])=>[a.join(','),b.join(',')].sort().join('|'))); // フェリー区間（点線）
 const segKey=(a,b)=>[a.join(','),b.join(',')].sort().join('|');
 const cover={}; // 区間 → その区間を通る路線（描く順）
 DRAW_ORDER.forEach(id=>{const pts=LINE_PATHS[id]||[];for(let i=0;i<pts.length-1;i++){const k=segKey(pts[i],pts[i+1]);(cover[k]=cover[k]||[]).push(id)}});
@@ -507,14 +508,14 @@ DRAW_ORDER.forEach(id=>{
   // 区間ごとに「何本重なるうちの何番目か」で分ける
   const runs=[];let cur=null;
   for(let i=0;i<pts.length-1;i++){
-    const c=cover[segKey(pts[i],pts[i+1])],n=c.length,k=c.indexOf(id),tag=k===0?'own':n+'-'+k;
+    const sk=segKey(pts[i],pts[i+1]),c=cover[sk],n=c.length,k=c.indexOf(id),tag=FERRY.has(sk)?'ferry':k===0?'own':n+'-'+k;
     if(!cur||cur.tag!==tag){cur={tag,n,k,pts:[pts[i]]};runs.push(cur)}
     cur.pts.push(pts[i+1]);
   }
   runs.forEach(run=>{
-    const top=run.k>0;
-    const dash=DOTTED.has(id)?'2 10':top?`10 ${10*(run.n-1)}`:null;
-    if(!top)pieces.push({l:L.polyline(run.pts,{color:'#fff',weight:10,opacity:.9,interactive:false,dashArray:DOTTED.has(id)?dash:null}).addTo(map),casing:true});
+    const fer=run.tag==='ferry',top=!fer&&run.k>0;
+    const dash=(DOTTED.has(id)||fer)?'2 10':top?`10 ${10*(run.n-1)}`:null;
+    if(!top)pieces.push({l:L.polyline(run.pts,{color:'#fff',weight:10,opacity:.9,interactive:false,dashArray:(DOTTED.has(id)||fer)?dash:null}).addTo(map),casing:true});
     pieces.push({l:L.polyline(run.pts,{color:r.color,weight:6,opacity:1,interactive:false,dashArray:dash,dashOffset:top?String(-10*(run.k-1)):null,lineCap:top?'butt':'round'}).addTo(map)});
   });
   lines[id]=pieces;
@@ -551,7 +552,7 @@ function updateMap(me){
   styleMap();
   if(markers[me])markers[me].bringToFront();
 }
-// 町全体が見えるように（直行バスの鹿児島市内側は、路線ボタンで表示）
+// 町全体の範囲（開いたときにバス停がわからない場合だけ使う）
 const homeBounds=L.latLngBounds([...LINE_PATHS.tashiro,...LINE_PATHS.chuo,...LINE_PATHS.kaigan]);
 // 最初から選んだバス停のまわりを出す（町全体を出してから移ると、使わない地図画像まで読んでしまうため）
 map.setView(STOP_POS[sel.value]||homeBounds.getCenter(),STOP_POS[sel.value]?12:10);
@@ -579,7 +580,7 @@ function selectStop(s,{fly=false}={}){
     b.innerHTML=`<i class="${DOTTED.has(r.id)?'dash':''}" style="background:${r.color};color:${r.color}"></i>${esc(r.short)}`;
     b.onclick=()=>{map.fitBounds(L.latLngBounds(LINE_PATHS[r.id]),fitPad());route=r.id;store.set('route',route);render()};
     box.append(b)});
-  const h=document.createElement('button');h.className='chip';h.type='button';h.textContent='町全体';h.onclick=()=>map.fitBounds(homeBounds,fitPad());box.append(h)}
+}
 
 // ---- 現在地から一番近いバス停 ----
 const dist=(a,b)=>{const R=6371008,r=Math.PI/180,dl=(b[0]-a[0])*r,dg=(b[1]-a[1])*r,x=Math.sin(dl/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(x)))};

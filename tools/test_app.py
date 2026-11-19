@@ -22,6 +22,9 @@ def png(rgba):
 
 TILE = png((236, 240, 236, 255))
 fails = []
+def LP_ok(pg):
+    return pg.evaluate("LINE_PATHS.direct.length>20&&LINE_PATHS.airport.length>20")
+
 def check(cond, msg):
     print(('OK  ' if cond else 'NG  ') + msg)
     if not cond:
@@ -138,6 +141,9 @@ with sync_playwright() as p:
     pg.click('.chip >> nth=5'); pg.wait_for_timeout(500)
     z = pg.evaluate('map.getZoom()')
     check(z <= 11, f'直行バスのボタンで鹿児島市内まで見える（拡大率{z}）')
+    check(pg.locator('.chip', has_text='町全体').count() == 0, '「町全体」のボタンはない')
+    nf = pg.evaluate("Object.values(lines).flat().filter(p=>!p.casing&&p.l.options.dashArray==='2 10').length")
+    check(nf == 1 and LP_ok(pg), f'点線はフェリー区間だけ（{nf}）')
     check(not errs, 'エラーが出ていない ' + ' / '.join(errs[:3]))
     ctx.close()
 
