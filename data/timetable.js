@@ -22,6 +22,12 @@ const SATA_INFO={revised:'令和8年10月1日〜',checked:'2026年11月18日',te
 const SATA=['石蔵','Aコープ前','片野坂','大浜','根占','ネッピー館','南大隅町役場本庁'];
 const SETSU_UP='根占で鹿児島交通の路線バスに接続',SETSU_DN='根占で鹿児島交通の路線バスから接続';
 const SATA_UP='石蔵で佐多地区のバスから接続',SATA_DN='石蔵で佐多地区のバスへ接続';
+// 鹿屋〜鹿児島空港線（鹿児島交通・毎日）。出典：鹿児島交通「鹿屋～空港線」時刻表 PDF（令和8年4月1日改正）から書き写し（確認日 2026-11-20）
+// アプリでは錦江町から使う区間（鹿屋市役所前・鹿屋〜鹿児島空港）だけを載せる。東笠之原・東団地前・寿中央・旭原・道の駅あらさの・高隈など途中のバス停は省略
+const AIRPORT_INFO={revised:'令和8年4月1日改正',checked:'2026年11月20日',
+  url:'https://www.iwasaki-corp.com/kagoshima_kotsu/wp-content/uploads/sites/8/2026/03/e7c442366f345c01ba3ffab7c7cdc1f2.pdf'};
+const AIRPORT_A=['市役所前','鹿屋','霧島市役所前','鹿児島空港'],AIRPORT_B=['鹿児島空港','霧島市役所前','鹿屋'];
+const EXP='高速道路経由',VIA='高隈・牧之原・霧島市役所前経由';
 const DIRECT=['鹿屋','垂水港','鹿児島中央駅','金生町（山形屋）'];
 const rev=a=>[...a].reverse();
 const KK='鹿屋工業経由';
@@ -80,6 +86,23 @@ const ROUTES=[
       {dir:'down',days:'weekday',tags:[SETSU_DN,SATA_DN],times:['11:55','11:57','12:02','12:07','12:21','12:26','12:27']},
       {dir:'down',days:'weekday',tags:[SATA_DN],times:['14:35','14:37','14:40','14:45','14:59','15:04','15:05']},
       {dir:'down',days:'weekday',tags:[SETSU_DN],times:['16:59','17:01','17:06','17:11','17:25','17:30','17:31']}
+    ]},
+  {id:'airport',name:'鹿屋〜鹿児島空港線（空港連絡バス）',short:'空港バス',color:'#0e7490',
+    note:'鹿屋〜鹿児島空港の線は、道すじではなく、おおよその向きを表しています。空港行きは鹿屋市役所前・鹿屋から乗車のみ、鹿屋行きは鹿屋で降車のみです。途中のバス停は省略しています。',
+    dirs:{a:{name:'鹿児島空港行き',stops:AIRPORT_A},b:{name:'鹿屋行き',stops:AIRPORT_B}},
+    trips:[
+      {dir:'a',tags:[EXP],times:['5:54','6:05','','7:30']},
+      {dir:'a',tags:[VIA],times:['7:34','7:45','9:08','9:30']},
+      {dir:'a',tags:[EXP],times:['9:24','9:35','','11:00']},
+      {dir:'a',tags:[EXP],times:['12:14','12:25','','13:50']},
+      {dir:'a',tags:[EXP],times:['13:54','14:05','','15:30']},
+      {dir:'a',tags:[EXP],times:['15:24','15:35','','17:00']},
+      {dir:'b',tags:[EXP],times:['9:00','','10:25']},
+      {dir:'b',tags:[EXP],times:['10:40','','12:05']},
+      {dir:'b',tags:[EXP],times:['12:10','','13:35']},
+      {dir:'b',tags:[VIA],times:['14:50','15:12','16:30']},
+      {dir:'b',tags:[EXP],times:['16:40','','18:05']},
+      {dir:'b',tags:[EXP],times:['18:05','','19:30']}
     ]},
   {id:'direct',name:'鹿児島中央駅直行バス（鹿屋発着）',short:'直行バス',color:'#7e22ce',
     note:'鹿屋〜垂水港〜鹿児島市内の線は、道すじではなく、おおよその向きを表しています。',
