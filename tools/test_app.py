@@ -103,6 +103,14 @@ with sync_playwright() as p:
     tt = pg.eval_on_selector_all('#v-next .grp >> nth=0 >> .trip .tt', 'e=>e.map(x=>x.textContent)')
     m = [int(a)*60+int(b) for a,b in (x.split(':') for x in tt)]
     check(m == sorted(m), f'まとめた便は時刻順（{len(m)}便）')
+    # 運賃：大根占から鹿屋まで 海岸線910円・中央線1,410円、コミュニティバスは無料
+    pg.select_option('#stop', '大根占'); pg.wait_for_timeout(300)
+    g = pg.inner_text('#v-next .grp >> nth=0')
+    check('910円' in g and '1,410円' in g, '大根占→鹿屋の運賃（海岸線910円・中央線1,410円）')
+    check('無料' in pg.inner_text('#v-next'), 'コミュニティバスは無料と出る')
+    pg.click('#v-next .grp >> nth=0 >> .trip >> nth=2'); pg.wait_for_timeout(300)
+    check('770円' not in pg.inner_text('#v-next .trip[aria-expanded=true]') and '910円' in pg.inner_text('#v-next .trip[aria-expanded=true]'), '便を開くと、先のバス停までの運賃が並ぶ（乗る前のバス停には出ない）')
+    pg.click('#v-next .trip[aria-expanded=true]'); pg.wait_for_timeout(200)
     # セレクトで選ぶ（中央線の壱崎）・時刻表タブ
     pg.select_option('#stop', '壱崎'); pg.wait_for_timeout(400)
     check('中央線' in pg.inner_text('#v-next'), '壱崎で中央線が出る')

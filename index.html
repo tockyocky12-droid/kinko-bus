@@ -95,6 +95,8 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .trip .row{display:flex;align-items:baseline;gap:10px}
 .trip .tt{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;min-width:3.2em}
 .trip .dst{flex:1;font-size:14px;min-width:8em}
+.stops .yen{margin-left:auto;padding-right:8px;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.farenote{font-size:12px;color:var(--muted);margin:4px 0 0}
 .rtag{display:inline-block;font-size:11.5px;font-weight:700;line-height:1.5;padding:0 6px;border-radius:4px;color:#fff;vertical-align:1px}
 .trip .tags{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 0 74px}
 .b{font-size:12px;border-radius:999px;padding:1px 8px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
@@ -175,6 +177,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     <p><b>このアプリは試作中の非公式のものです。</b>正式な時刻は、町の時刻表・鹿児島交通で確認してください。</p>
     <p><b>出典と更新日</b><br>
     時刻：<a id="srcpdf" target="_blank" rel="noopener">錦江町関連バスの運行時刻表</a>（錦江町、<span id="srcrev"></span>）から書き写し。確認日：<span id="srcchk"></span><br>
+    運賃：<a id="farepdf" target="_blank" rel="noopener">鹿児島交通の運賃表</a>（海岸線・中央線。大人・現金の普通運賃）から書き写し。確認日：<span id="farechk"></span>。コミュニティバスと根占〜佐多間は無料。直行バスの運賃は載せていません<br>
     根占〜佐多間コミュニティバス：<a id="satapdf" target="_blank" rel="noopener">南大隅町コミュニティバス交通利用案内</a>（南大隅町、令和8年10月1日〜）から書き写し。確認日：2026年11月18日。問い合わせ：南大隅町役場 企画観光課 0994-24-3113<br>
     バス停の位置・路線の道すじ：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。道すじは途中のバス停を結んだ目安で、実際の道とは少し違います。<br>
     背景の地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
@@ -189,15 +192,17 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./lib/leaflet-1.9.4/leaflet.js"></script>
 <script src="./data/timetable.js"></script>
 <script src="./data/stops.js"></script>
+<script src="./data/fares.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v19';
+const APP_VER='v20';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
 document.getElementById('srcrev').textContent=TIMETABLE_INFO.revised;
 document.getElementById('srcchk').textContent=TIMETABLE_INFO.checked;
 document.getElementById('satapdf').href=SATA_INFO.url;
+document.getElementById('farepdf').href=FARE_INFO.url;document.getElementById('farechk').textContent=FARE_INFO.checked;
 
 // 端末に保存する記録（同じサイトの森林ナビ・防災ナビと分けるため「bus:」を付ける）
 const store={get(k){try{return localStorage.getItem('bus:'+k)}catch(e){return null}},set(k,v){try{localStorage.setItem('bus:'+k,v)}catch(e){}}};
@@ -250,6 +255,16 @@ function departures(me,hol){
   }));
   return out;
 }
+
+// 運賃（大人・現金）。0＝無料、null＝わからない（直行バスなど）
+function fareYen(r,t,a,b){
+  if(FREE_ROUTES.includes(r.id))return 0;
+  const k=r.id==='kaigan'?(t.tags.includes(KK)?'kaigan_kk':'kaigan'):r.id==='chuo'?'chuo':null;
+  if(!k)return null;const F=FARES[k],i=F.stops.indexOf(a),j=F.stops.indexOf(b);
+  return i<0||j<0?null:F.yen[i][j];
+}
+const yenTxt=v=>v===0?'無料':v==null?'':v.toLocaleString('ja-JP')+'円';
+const fareTo=(r,t,a,b)=>{const y=yenTxt(fareYen(r,t,a,b));return y?'・'+y:''};
 
 // 同じ方面（例：鹿屋方面の海岸線と中央線）は1つにまとめ、時刻順に並べる
 function mergedDeps(me,hol){
@@ -332,13 +347,20 @@ function render(){
     if(multi&&today.length)routes.filter(r=>!today.some(it=>it.r===r)).forEach(r=>{h+=`<div class="none">${esc(r.short)}は、${hol?'土日祝':'平日'}はこのバス停から${esc(name)}へ走りません。</div>`});
     if(!today.length){h+=`<div class="none">${hol?'土日祝':'平日'}は、このバス停から${esc(name)}の便はありません。</div></div>`;return}
     if(live){const nx=today.find(({t})=>mins(t.at[me])>=now.min);
-      h+=nx?`<div class="next"><div class="lbl">次のバス</div><div class="t">${nx.t.at[me]}<small>発</small></div><div>${multi?rtag(nx.r)+' ':''}${esc(nx.t.last)}行き・${nx.t.at[nx.t.last]}着</div><div class="in">${left(mins(nx.t.at[me])-now.min)}</div>${lastLine(today,nx,me)}</div>`
+      h+=nx?`<div class="next"><div class="lbl">次のバス</div><div class="t">${nx.t.at[me]}<small>発</small></div><div>${multi?rtag(nx.r)+' ':''}${esc(nx.t.last)}行き・${nx.t.at[nx.t.last]}着${fareTo(nx.r,nx.t,me,nx.t.last)}</div><div class="in">${left(mins(nx.t.at[me])-now.min)}</div>${lastLine(today,nx,me)}</div>`
         :`<div class="none">今日の${esc(name)}の便は終わりました。</div>`}
     today.forEach(({t,key,r,D})=>{
       const past=live&&mins(t.at[me])<now.min;
-      h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${multi?rtag(r)+' ':''}${esc(t.last)}行き・${t.at[t.last]}着</span></div>${badges(t,open===key)}`;
+      h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${multi?rtag(r)+' ':''}${esc(t.last)}行き・${t.at[t.last]}着${fareTo(r,t,me,t.last)}</span></div>${badges(t,open===key)}`;
       if(open===key){
-        h+='<ul class="stops">'+D.stops.map((s,i)=>t.times[i]==='>'?`<li class="pass"><b></b>${esc(s)}（通過）</li>`:t.times[i]?`<li class="${s===me?'me':''}"><b>${t.times[i]}</b>${esc(s)}</li>`:'').join('')+'</ul>';
+        const mi=D.stops.indexOf(me);
+        h+='<ul class="stops">'+D.stops.map((s,i)=>{
+          if(t.times[i]==='>')return `<li class="pass"><b></b>${esc(s)}（通過）</li>`;
+          if(!t.times[i])return '';
+          const y=i>mi?yenTxt(fareYen(r,t,me,s)):'';
+          return `<li class="${s===me?'me':''}"><b>${t.times[i]}</b>${esc(s)}${y?`<span class="yen">${y}</span>`:''}</li>`;
+        }).join('')+'</ul>';
+        if(fareYen(r,t,me,t.last)>0)h+=`<div class="farenote">運賃は ${esc(me)} から乗ったときの大人・現金の普通運賃です。</div>`;
         if(t.link)h+=`<div class="lnk">${t.dir==='a'?'鹿屋で垂水方面へ乗り継ぎ：':'垂水方面から鹿屋で乗り継ぎ：'}${esc(t.link)}</div>`}
       h+='</button>';
     });
