@@ -93,6 +93,7 @@ with sync_playwright() as p:
     check('根占で鹿児島交通の路線バスに接続' in t2, '根占での接続の印が出る')
     pg.select_option('#stop', '根占'); pg.wait_for_timeout(300)
     check('佐多方面' in pg.inner_text('#v-next'), '根占から佐多方面の便が出る')
+    check(pg.get_attribute('#farepdf2','href').endswith('/b895630b63fe5da84e4bf8ef833be21b.pdf') and pg.get_attribute('#farepdf','href').endswith('/ac0da9f0815db155627cef3ed948a0e8.pdf'), '運賃表のリンク（海岸線・中央線）')
     check(pg.get_attribute('#satapdf','href').endswith('/kotsu/documents/nejimesaigo.pdf'), '根占〜佐多の出典に南大隅町のPDFへのリンク')
     # 大根占：詳しい画面は鹿屋方面が上
     pg.select_option('#stop', '大根占'); pg.wait_for_timeout(300)
