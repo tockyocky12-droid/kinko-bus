@@ -214,6 +214,10 @@ with sync_playwright() as p:
     check(favs == ['★ 大根占', '★ 工業高校前'] and pg.input_value('#stop') == '大根占', f'よく使うバス停：登録・保存・押して切り替え {favs}')
     check(pg.evaluate("Object.keys(localStorage).every(k=>k.startsWith('bus:'))"), '端末の記録は bus: 付き')
     c.close()
+    c, pg, e8 = at((2026, 11, 20, 8, 0), '霧島市役所前')
+    vn = pg.inner_text('#v-next')
+    check('一般道（高隈・牧之原）経由の便だけ' in vn and '9:08' in vn and '560円' in vn, '霧島市役所前：止まる便の説明と、空港まで560円')
+    c.close(); e7 += e8
     check(not (e4 + e5 + e6 + e7), 'エラーが出ていない（4） ' + ' / '.join((e4 + e5 + e6 + e7)[:3]))
     br.close()
 

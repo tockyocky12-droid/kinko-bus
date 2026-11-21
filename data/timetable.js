@@ -28,6 +28,8 @@ const AIRPORT_INFO={revised:'令和8年4月1日改正',checked:'2026年11月20�
   url:'https://www.iwasaki-corp.com/kagoshima_kotsu/wp-content/uploads/sites/8/2026/03/e7c442366f345c01ba3ffab7c7cdc1f2.pdf'};
 const AIRPORT_A=['市役所前','鹿屋','霧島市役所前','鹿児島空港'],AIRPORT_B=['鹿児島空港','霧島市役所前','鹿屋'];
 const EXP='高速道路経由',VIA='高隈・牧之原・霧島市役所前経由';
+// バス停の補足（そのバス停を選んだときに、くわしい画面の上と、バス停を選ぶ画面に出す）
+const STOP_NOTES={'霧島市役所前':{short:'空港バスの一般道経由の便だけ',text:'空港バスは、一般道（高隈・牧之原）経由の便だけが止まります（1日1往復：空港行き 鹿屋7:45発→霧島市役所前9:08、鹿屋行き 空港14:50発→霧島市役所前15:12）。高速道路経由の便は止まりません。地図の空港バスの線は高速道路の道なので、このバス停は線から離れています。'}};
 const DIRECT=['鹿屋','垂水港','鹿児島中央駅','金生町（山形屋）'];
 const rev=a=>[...a].reverse();
 const KK='鹿屋工業経由';
