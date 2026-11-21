@@ -225,7 +225,8 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     <p><b>出典と更新日</b><br>
     時刻：<a id="srcpdf" target="_blank" rel="noopener">錦江町関連バスの運行時刻表</a>（錦江町、<span id="srcrev"></span>）から書き写し。確認日：<span id="srcchk"></span><br>
     工業高校前の時刻：鹿児島交通の時刻表「(女子高前〜)鹿屋〜市役所前〜大姶良〜坂元〜大根占〜根占」「鹿屋〜吾平〜田代麓〜大根占〜根占」（2026年10月1日）から書き写し<br>
-    運賃：鹿児島交通の運賃表（<a id="farepdf" target="_blank" rel="noopener">海岸線</a>・<a id="farepdf2" target="_blank" rel="noopener">中央線</a>。大人・現金の普通運賃）から書き写し。確認日：<span id="farechk"></span>。コミュニティバスと根占〜佐多間は無料。直行バスの運賃は載せていません<br>
+    運賃：鹿児島交通の運賃表（<a id="farepdf" target="_blank" rel="noopener">海岸線</a>・<a id="farepdf2" target="_blank" rel="noopener">中央線</a>。大人・現金の普通運賃）から書き写し。確認日：<span id="farechk"></span>。コミュニティバスと根占〜佐多間は無料<br>
+    直行バス：<a id="dirpdf" target="_blank" rel="noopener">鹿児島交通「鹿屋～鹿児島直行バス 運行時刻のお知らせ」</a>（2026年7月18日改正、鹿屋市のページに掲載）で時刻を確かめ、運賃を書き写し。確認日：2026年11月21日<br>
     鹿屋〜鹿児島空港線：<a id="airpdf" target="_blank" rel="noopener">鹿児島交通「鹿屋～空港線」時刻表</a>（令和8年4月1日改正）から、鹿屋市役所前・鹿屋〜鹿児島空港の区間を書き写し。確認日：2026年11月20日<br>
     根占〜佐多間コミュニティバス：<a id="satapdf" target="_blank" rel="noopener">南大隅町コミュニティバス交通利用案内</a>（南大隅町、令和8年10月1日〜）から書き写し。確認日：2026年11月18日。問い合わせ：南大隅町役場 企画観光課 0994-24-3113<br>
     バス停の位置：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。<br>
@@ -246,13 +247,13 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v35';
+const APP_VER='v36';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
 document.getElementById('srcrev').textContent=TIMETABLE_INFO.revised;
 document.getElementById('srcchk').textContent=TIMETABLE_INFO.checked;
-document.getElementById('satapdf').href=SATA_INFO.url;document.getElementById('airpdf').href=AIRPORT_INFO.url;
+document.getElementById('satapdf').href=SATA_INFO.url;document.getElementById('airpdf').href=AIRPORT_INFO.url;document.getElementById('dirpdf').href=DIRECT_INFO.url;
 document.getElementById('farepdf').href=FARE_INFO.url;document.getElementById('farepdf2').href=FARE_INFO.urlChuo;document.getElementById('farechk').textContent=FARE_INFO.checked;
 
 // 端末に保存する記録（同じサイトの森林ナビ・防災ナビと分けるため「bus:」を付ける）
@@ -296,6 +297,15 @@ const mdIn=(n,from,to)=>{const k=n.m*100+n.d,[a,b]=[from,to].map(x=>{const [m,d]
 const special=(rid,n)=>n&&typeof SPECIAL_DAYS!=='undefined'?SPECIAL_DAYS.find(x=>x.route===rid&&mdIn(n,x.from,x.to))||null:null;
 const addDays=(n,i)=>{const x=new Date(Date.UTC(n.y,n.m-1,n.d+i));return {y:x.getUTCFullYear(),m:x.getUTCMonth()+1,d:x.getUTCDate(),wd:x.getUTCDay(),min:0}};
 const dayCtx=n=>({hol:isHoliday(n),date:n});
+// 直行バスの週末ダイヤ：土日と、土日に（祝日をはさんで）つながる祝日・振替休日だけ
+const isHolDay=n=>holidays(n.y).has(n.m+'-'+n.d);
+function weekendAdj(n){
+  if(n.wd===0||n.wd===6)return true;if(!isHolDay(n))return false;
+  for(const s of [-1,1]){let x=addDays(n,s);while(isHolDay(x)&&x.wd!==0&&x.wd!==6)x=addDays(x,s);if(x.wd===0||x.wd===6)return true}
+  return false;
+}
+// その路線で土日祝の時刻を使う日か（ctx.date がないとき＝「平日」「土日祝」を押したときは、押したほう）
+const routeHol=(r,ctx)=>{const sp=special(r.id,ctx.date);if(sp&&sp.type==='holiday')return true;return ctx.date&&r.holRule==='weekendAdj'?weekendAdj(ctx.date):ctx.hol};
 const runs=(t,hol)=>!(hol&&t.days==='weekday')&&!(!hol&&t.days==='holiday');
 const left=n=>n<60?'あと'+n+'分':'あと'+Math.floor(n/60)+'時間'+(n%60)+'分';
 const WD='日月火水木金土';
@@ -308,7 +318,7 @@ function departures(me,ctx){
     const at=D.stops.indexOf(me);if(at<0||at===D.stops.length-1)return;
     const list=r.trips.map((t,i)=>({t,key:ri+'-'+i})).filter(({t})=>t.dir===dk&&t.at[me]&&t.last!==me);
     if(!list.length)return; // 通過するだけ
-    const sp=special(r.id,ctx.date),hol=sp&&sp.type==='holiday'?true:ctx.hol;
+    const sp=special(r.id,ctx.date),hol=routeHol(r,ctx);
     out.push({r,dk,D,off:sp&&sp.type==='off'?sp:null,today:sp&&sp.type==='off'?[]:list.filter(({t})=>runs(t,hol)).sort((a,b)=>mins(a.t.at[me])-mins(b.t.at[me]))});
   }));
   return out;
@@ -332,7 +342,7 @@ function airportLink(r,t){
 // 運賃（大人・現金）。0＝無料、null＝わからない（直行バスなど）
 function fareYen(r,t,a,b){
   if(FREE_ROUTES.includes(r.id))return 0;
-  const k=r.id==='kaigan'?(t.tags.includes(KK)?'kaigan_kk':'kaigan'):r.id==='chuo'?'chuo':r.id==='airport'?'airport':null;
+  const k=r.id==='kaigan'?(t.tags.includes(KK)?'kaigan_kk':'kaigan'):r.id==='chuo'?'chuo':r.id==='airport'?'airport':r.id==='direct'?'direct':null;
   if(!k)return null;const F=FARES[k],i=F.stops.indexOf(a),j=F.stops.indexOf(b);
   return i<0||j<0?null:F.yen[i][j];
 }
@@ -360,7 +370,7 @@ const GO_DEST=['鹿屋','鹿児島空港','鹿児島中央駅'],XFER=5;
 let goDest=store.get('goDest')||'鹿児島空港',goBack=false;if(!GO_DEST.includes(goDest))goDest='鹿児島空港';
 function runningTrips(ctx){
   const out=[];
-  ROUTES.forEach(r=>{const sp=special(r.id,ctx.date);if(sp&&sp.type==='off')return;const hol=sp&&sp.type==='holiday'?true:ctx.hol;
+  ROUTES.forEach(r=>{const sp=special(r.id,ctx.date);if(sp&&sp.type==='off')return;const hol=routeHol(r,ctx);
     r.trips.forEach(t=>{if(runs(t,hol))out.push({r,t})})});
   return out;
 }
@@ -404,7 +414,7 @@ function renderGo(me,ctx,live,now){
     h+='</ol></div>';
   });
   if(live&&L.length&&!L.some(x=>x.dep>=now.min))h+=`<div class="none">今日の便は終わりました。「平日」「土日祝」を押すと、ほかの日の行き方が見られます。</div>`;
-  h+=`<p class="gonote">乗り継ぎは2回まで、乗り継ぎの時間は5分以上で計算しています。鹿屋から垂水港へ出てフェリーで渡る行き方は入っていません。運賃は大人・現金の普通運賃の合計の目安です。</p>`;
+  h+=`<p class="gonote">乗り継ぎは2回まで、乗り継ぎの時間は5分以上で計算しています。直行バス以外で鹿屋から垂水港へ出てフェリーで渡る行き方は入っていません。運賃は大人・現金の普通運賃の合計の目安です。</p>`;
   return h;
 }
 // まとめた方面の色（路線が2つ以上なら、色を縦に分ける）

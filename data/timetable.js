@@ -24,6 +24,9 @@ const SETSU_UP='根占で鹿児島交通の路線バスに接続',SETSU_DN='根�
 const SATA_UP='石蔵で佐多地区のバスから接続',SATA_DN='石蔵で佐多地区のバスへ接続';
 // 鹿屋〜鹿児島空港線（鹿児島交通・毎日）。出典：鹿児島交通「鹿屋～空港線」時刻表 PDF（令和8年4月1日改正）から書き写し（確認日 2026-11-20）
 // アプリでは錦江町から使う区間（鹿屋市役所前・鹿屋〜鹿児島空港）だけを載せる。東笠之原・東団地前・寿中央・旭原・道の駅あらさの・高隈など途中のバス停は省略
+// 直行バス：鹿児島交通「鹿屋～鹿児島直行バス 運行時刻のお知らせ」（2026年7月18日改正。鹿屋市のページに掲載）。v36で時刻を照合済み・運賃を追加
+// 土日祝の時刻（週末ダイヤ）は「土曜・日曜と、土日の前後につながる祝日・振替休日」だけ。平日にぽつんとある祝日は平日の時刻（holRule:'weekendAdj'）
+const DIRECT_INFO={revised:'2026年7月18日改正',checked:'2026年11月21日',url:'https://www.city.kanoya.lg.jp/documents/2077/tyokkoubasujikokuhyou20260718.pdf',page:'https://www.city.kanoya.lg.jp/koutsuu/kurashi/kotsu/chokkobus.html'};
 const AIRPORT_INFO={revised:'令和8年4月1日改正',checked:'2026年11月20日',
   url:'https://www.iwasaki-corp.com/kagoshima_kotsu/wp-content/uploads/sites/8/2026/03/e7c442366f345c01ba3ffab7c7cdc1f2.pdf'};
 const AIRPORT_A=['市役所前','鹿屋','霧島市役所前','鹿児島空港'],AIRPORT_B=['鹿児島空港','霧島市役所前','鹿屋'];
@@ -106,8 +109,8 @@ const ROUTES=[
       {dir:'b',tags:[EXP],times:['16:40','','18:05']},
       {dir:'b',tags:[EXP],times:['18:05','','19:30']}
     ]},
-  {id:'direct',name:'鹿児島中央駅直行バス（鹿屋発着）',short:'直行バス',color:'#7e22ce',
-    note:'垂水港〜鴨池港はフェリーで渡ります（地図では点線）。',
+  {id:'direct',name:'鹿児島中央駅直行バス（鹿屋発着）',short:'直行バス',color:'#7e22ce',holRule:'weekendAdj',
+    note:'垂水港〜鴨池港はフェリーで渡ります（地図では点線）。鹿屋・垂水港は乗車のみ（鹿児島行き）・降車のみ（鹿屋行き）、鹿児島中央駅・金生町はその逆です。土日祝の時刻は土曜・日曜と、その前後につながる祝日・振替休日だけで、平日にある祝日は平日の時刻です。',
     dirs:{a:{name:'鹿児島市内行き',stops:DIRECT},b:{name:'鹿屋行き',stops:rev(DIRECT)}},
     trips:[
       {dir:'a',times:['5:55','6:40','7:52','7:59']},
