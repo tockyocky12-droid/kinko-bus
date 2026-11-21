@@ -218,6 +218,17 @@ with sync_playwright() as p:
     vn = pg.inner_text('#v-next')
     check('一般道（高隈・牧之原）経由の便だけ' in vn and '9:08' in vn and '560円' in vn, '霧島市役所前：止まる便の説明と、空港まで560円')
     c.close(); e7 += e8
+    c, pg, e9 = at((2026, 11, 20, 6, 0), '大根占')
+    pg.click('#tab-go'); pg.click('[data-d="鹿児島空港"]'); pg.wait_for_timeout(300)
+    g = pg.inner_text('#v-go')
+    check('11:32 → 13:50着' in g and '8:27 → 11:00着' in g and '7:05 → 11:00着' not in g and '3,350円' in g, '行き先から：大根占→空港（同じ到着の早い便は出さない、運賃の合計）')
+    pg.click('[data-d="鹿児島中央駅"]'); pg.wait_for_timeout(200); g = pg.inner_text('#v-go')
+    check('11:32 → 14:32着' in g and '直行バスの運賃' in g, '行き先から：大根占→鹿児島中央駅（直行バスに乗り継ぎ）')
+    pg.click('[data-b="1"]'); pg.click('[data-d="鹿児島空港"]'); pg.wait_for_timeout(200); g = pg.inner_text('#v-go')
+    check('16:40 → 19:09着' in g, '行き先から：空港から大根占へ帰る')
+    pg.click('[data-b="0"]'); pg.select_option('#stop', '内之牧'); pg.wait_for_timeout(300); g = pg.inner_text('#v-go')
+    check('乗り継ぎ2回' in g and pg.get_attribute('#tab-go', 'aria-selected') == 'true', '行き先から：内之牧→空港は乗り継ぎ2回、バス停を変えても画面はそのまま')
+    c.close(); e7 += e9
     check(not (e4 + e5 + e6 + e7), 'エラーが出ていない（4） ' + ' / '.join((e4 + e5 + e6 + e7)[:3]))
     br.close()
 

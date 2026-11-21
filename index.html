@@ -78,6 +78,19 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
 .tabs{display:flex;gap:6px;margin:12px 0 4px}
 .tabs button{flex:1;font-size:15px;font-weight:700;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);cursor:pointer}
+.gosel{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.gosel button{font:inherit;font-size:15px;font-weight:700;padding:8px 12px;border:1.5px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
+.gosel button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.gosel.dir button{font-size:13px;padding:6px 12px}
+.it{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:var(--panel)}
+.it.past{opacity:.5}
+.it-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.it-h .tm{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.it-h .sum{font-size:13px;color:var(--muted)}
+.it-h .in{font-size:13px;font-weight:700;color:var(--accent)}
+.it ol{list-style:none;margin:6px 0 0;padding:0;font-size:14px;line-height:1.5}
+.it li.xf{font-size:12.5px;color:var(--muted);padding-left:14px}
+.gonote{font-size:12.5px;color:var(--muted);margin:6px 2px}
 .tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .grp{margin-top:16px}
 .grp-h{display:flex;align-items:center;gap:8px;margin:0 0 6px}
@@ -200,9 +213,11 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 
   <div class="tabs" role="tablist">
     <button role="tab" id="tab-next" aria-selected="true">次のバス</button>
+    <button role="tab" id="tab-go" aria-selected="false">行き先から</button>
     <button role="tab" id="tab-all" aria-selected="false">時刻表</button>
   </div>
   <section id="v-next"></section>
+  <section id="v-go" hidden></section>
   <section id="v-all" hidden></section>
 
   <footer>
@@ -231,7 +246,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v34';
+const APP_VER='v35';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -340,6 +355,58 @@ function nextFirst(me,name,now){
   return null;
 }
 const firstTxt=(f,me)=>f?`${f.when}の始発は <b>${f.it.t.at[me]}</b> 発（${esc(f.it.r.short)}・${esc(f.it.t.last)}行き）です。`:'';
+// ---- 行き先から探す（乗り継ぎは2回まで、乗り継ぎ時間は5分以上） ----
+const GO_DEST=['鹿屋','鹿児島空港','鹿児島中央駅'],XFER=5;
+let goDest=store.get('goDest')||'鹿児島空港',goBack=false;if(!GO_DEST.includes(goDest))goDest='鹿児島空港';
+function runningTrips(ctx){
+  const out=[];
+  ROUTES.forEach(r=>{const sp=special(r.id,ctx.date);if(sp&&sp.type==='off')return;const hol=sp&&sp.type==='holiday'?true:ctx.hol;
+    r.trips.forEach(t=>{if(runs(t,hol))out.push({r,t})})});
+  return out;
+}
+// O から D へ。各案 = 乗る便の列 [{r,t,from,to,dep,arr}]
+function plans(O,D,ctx){
+  const T=runningTrips(ctx),best=new Map();
+  const legsFrom=(X,after,usedTrip)=>{const L=[];T.forEach(({r,t})=>{if(t===usedTrip)return;const i=t.seq.indexOf(X);if(i<0||i===t.seq.length-1)return;
+      const dep=mins(t.at[X]);if(dep<after)return;L.push({r,t,i,dep})});return L};
+  const walk=(path,X,after,depth)=>{
+    legsFrom(X,after,path.length?path[path.length-1].t:null).forEach(({r,t,i,dep})=>{
+      for(let k=i+1;k<t.seq.length;k++){const Y=t.seq[k],arr=mins(t.at[Y]);
+        const leg={r,t,from:X,to:Y,dep,arr},p=[...path,leg];
+        if(Y===D){const d0=p[0].dep,key=d0,cur=best.get(key);
+          if(!cur||arr<cur.arr||(arr===cur.arr&&p.length<cur.p.length))best.set(key,{p,dep:d0,arr});break}
+        if(depth<2&&Y!==O&&!path.some(l=>l.from===Y))walk(p,Y,arr+XFER,depth+1);
+      }
+    });
+  };
+  walk([],O,0,0);
+  // 同じ到着なら遅く出る案だけ、遅く着くのに早く出る案は外す
+  const list=[...best.values()].sort((a,b)=>a.dep-b.dep);
+  return list.filter(a=>!list.some(b=>b!==a&&b.dep>=a.dep&&b.arr<=a.arr&&(b.dep>a.dep||b.arr<a.arr||b.p.length<a.p.length)));
+}
+const hm=n=>`${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`;
+const dur=n=>n<60?n+'分':Math.floor(n/60)+'時間'+String(n%60).padStart(2,'0')+'分';
+function planFare(p){let s=0,miss=[];p.forEach(l=>{const y=fareYen(l.r,l.t,l.from,l.to);if(y==null)miss.push(l.r.short);else s+=y});
+  return miss.length?(s?yenTxt(s)+'＋'+miss.join('・')+'の運賃':miss.join('・')+'の運賃は未収録'):(s?yenTxt(s):'無料')}
+function renderGo(me,ctx,live,now){
+  let h=`<div class="gosel dir" role="group" aria-label="向き"><button data-b="0" aria-pressed="${!goBack}">${esc(me)}から行く</button><button data-b="1" aria-pressed="${goBack}">${esc(me)}へ帰る</button></div>`;
+  h+=`<div class="gosel" role="group" aria-label="行き先">${GO_DEST.map(d=>`<button data-d="${esc(d)}" aria-pressed="${d===goDest}">${esc(d)}${goBack?'から':'へ'}</button>`).join('')}</div>`;
+  const O=goBack?goDest:me,D=goBack?me:goDest;
+  if(O===D)return h+`<div class="none">乗るバス停を ${esc(goDest)} 以外にすると、乗り継ぎを含めた行き方が出ます。</div>`;
+  const L=plans(O,D,ctx);
+  if(!L.length){h+=`<div class="none">${live?'今日':(ctx.hol?'土日祝':'平日')}は、${esc(O)}から${esc(D)}へ乗り継ぎ2回までで行ける便がありません。</div>`;}
+  let shown=0;
+  L.forEach(({p,dep,arr})=>{
+    const past=live&&dep<now.min;
+    h+=`<div class="it${past?' past':''}"><div class="it-h"><span class="tm">${hm(dep)} → ${hm(arr)}着</span><span class="sum">${dur(arr-dep)}・${p.length>1?'乗り継ぎ'+(p.length-1)+'回':'乗り継ぎなし'}・${planFare(p)}</span>${live&&!past&&!shown++?`<span class="in">${left(dep-now.min)}</span>`:''}</div><ol>`;
+    p.forEach((l,i)=>{if(i)h+=`<li class="xf">${esc(l.from)}で乗り継ぎ（${l.dep-p[i-1].arr}分）</li>`;
+      h+=`<li>${rtag(l.r)} ${esc(l.from)} ${hm(l.dep)} → ${esc(l.to)} ${hm(l.arr)}</li>`});
+    h+='</ol></div>';
+  });
+  if(live&&L.length&&!L.some(x=>x.dep>=now.min))h+=`<div class="none">今日の便は終わりました。「平日」「土日祝」を押すと、ほかの日の行き方が見られます。</div>`;
+  h+=`<p class="gonote">乗り継ぎは2回まで、乗り継ぎの時間は5分以上で計算しています。鹿屋から垂水港へ出てフェリーで渡る行き方は入っていません。運賃は大人・現金の普通運賃の合計の目安です。</p>`;
+  return h;
+}
 // まとめた方面の色（路線が2つ以上なら、色を縦に分ける）
 const stripe=rs=>rs.length<2?rs[0].color:'linear-gradient(to bottom,'+rs.map((r,i)=>`${r.color} ${i*100/rs.length}% ${(i+1)*100/rs.length}%`).join(',')+')';
 const rtag=r=>`<span class="rtag" style="background:${r.color}">${esc(r.short)}</span>`;
@@ -379,7 +446,7 @@ sheet.querySelector('.sh-x').onclick=closeSheet;
 sheet.onclick=e=>{if(e.target===sheet)closeSheet()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)closeSheet()});
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;render()});
-const tabs={next:document.getElementById('tab-next'),all:document.getElementById('tab-all')};
+const tabs={next:document.getElementById('tab-next'),go:document.getElementById('tab-go'),all:document.getElementById('tab-all')};
 Object.entries(tabs).forEach(([k,b])=>b.onclick=()=>{tab=k;render()});
 // よく使うバス停（最大3つ。端末に保存）。押すとそのバス停に切り替わる
 const FAV_MAX=3,favBox=document.getElementById('favs');
@@ -496,6 +563,10 @@ function render(){
     if(links)a+=`<p class="legend">${dk==='a'?'鹿屋で垂水方面へ乗り継ぎ':'垂水方面から鹿屋で乗り継ぎ'}</p><ul class="legend">${links}</ul>`;
   });
   a+='<p class="legend">緑の行は、選んだバス停です。</p>';
+  const vg=document.getElementById('v-go');
+  if(tab==='go'){vg.innerHTML=renderGo(me,ctx,live,now);
+    vg.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{goDest=b.dataset.d;store.set('goDest',goDest);render()});
+    vg.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{goBack=b.dataset.b==='1';render()})}
   const va=document.getElementById('v-all');va.innerHTML=a;
   va.querySelectorAll('.rsel button').forEach(b=>b.onclick=()=>{route=b.dataset.r;store.set('route',route);render()});
   updateMap(me);
@@ -606,7 +677,7 @@ function showStopArea(s){
   map.panBy([0,Math.round(nbar.offsetHeight/2)],{animate:false});
 }
 function selectStop(s,{fly=false}={}){
-  sel.value=s;document.getElementById('stopname').textContent=s;store.set('stop',s);open=null;mode='auto';tab='next';render();
+  sel.value=s;document.getElementById('stopname').textContent=s;store.set('stop',s);open=null;mode='auto';if(tab!=='go')tab='next';render();
   if(fly&&STOP_POS[s])map.setView(STOP_POS[s],Math.max(map.getZoom(),13));
 }
 
