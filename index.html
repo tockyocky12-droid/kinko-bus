@@ -213,7 +213,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     鹿屋〜鹿児島空港線：<a id="airpdf" target="_blank" rel="noopener">鹿児島交通「鹿屋～空港線」時刻表</a>（令和8年4月1日改正）から、鹿屋市役所前・鹿屋〜鹿児島空港の区間を書き写し。確認日：2026年11月20日<br>
     根占〜佐多間コミュニティバス：<a id="satapdf" target="_blank" rel="noopener">南大隅町コミュニティバス交通利用案内</a>（南大隅町、令和8年10月1日〜）から書き写し。確認日：2026年11月18日。問い合わせ：南大隅町役場 企画観光課 0994-24-3113<br>
     バス停の位置：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。<br>
-    路線の道すじ：国土数値情報（バスルートデータ）平成23年度（国土交通省）の道路の線を使い、バス停どうしを道に沿ってつないで作成。目安です（直行バスの垂水港〜鴨池港はフェリーで、点線で表しています。空港バスの線は高隈・牧之原・霧島市役所前経由の道すじで、高速道路経由の便は別の道を通ります）。<br>
+    路線の道すじ：国土数値情報（バスルートデータ）平成23年度（国土交通省）の道路の線を使い、バス停どうしを道に沿ってつないで作成。目安です（直行バスの垂水港〜鴨池港はフェリーで、点線で表しています。空港バスの線は高速道路経由の道すじで、国土数値情報（高速道路時系列）令和7年度（国土交通省）の線を使っています。旭原〜鹿屋串良JCTの大隅縦貫道はデータがないため点線の目安です。高隈・牧之原・霧島市役所前経由の便は別の道を通ります）。<br>
     背景の地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
     <p>祝日は自動で判定しています。年末年始は、確かめられた運休（根占〜佐多間の12月30日〜1月3日）だけを反映しています。ほかの路線の年末年始の運行は、各問い合わせ先で確かめてください。<br>
     田代地区コミュニティバスは無料です。路線バス・直行バスの運賃と問い合わせ：鹿児島交通株式会社 鹿屋営業所 0994-65-2258（<a href="https://www.iwasaki-corp.com/kagoshima_kotsu/contact/" target="_blank" rel="noopener">お問合せページ</a>）</p>
@@ -230,7 +230,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v32';
+const APP_VER='v33';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -531,7 +531,7 @@ new FallbackTileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png
 // 同じ道を複数の路線が通る区間は、先に描いた路線の上に、あとの路線を破線で重ねる（色が順に並んで見える）
 const DRAW_ORDER=['chuo','kaigan','tashiro','sata','airport','direct'];
 const DOTTED=new Set(); // 道すじではなく向きだけの点線で描く路線（v27から、どの路線も道に沿わせたので空）
-const FERRY=new Set((typeof FERRY_SEGS!=='undefined'?FERRY_SEGS:[]).map(([a,b])=>[a.join(','),b.join(',')].sort().join('|'))); // フェリー区間（点線）
+const FERRY=new Set([...(typeof FERRY_SEGS!=='undefined'?FERRY_SEGS:[]),...(typeof GUESS_SEGS!=='undefined'?GUESS_SEGS:[])].map(([a,b])=>[a.join(','),b.join(',')].sort().join('|'))); // 点線で描く区間：直行バスのフェリー（垂水港〜鴨池港）と、空港バスの大隅縦貫道（道のデータがない目安）
 const segKey=(a,b)=>[a.join(','),b.join(',')].sort().join('|');
 const cover={}; // 区間 → その区間を通る路線（描く順）
 DRAW_ORDER.forEach(id=>{const pts=LINE_PATHS[id]||[];for(let i=0;i<pts.length-1;i++){const k=segKey(pts[i],pts[i+1]);(cover[k]=cover[k]||[]).push(id)}});

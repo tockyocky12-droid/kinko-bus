@@ -143,7 +143,7 @@ with sync_playwright() as p:
     check(z <= 11, f'直行バスのボタンで鹿児島市内まで見える（拡大率{z}）')
     check(pg.locator('.chip', has_text='町全体').count() == 0, '「町全体」のボタンはない')
     nf = pg.evaluate("Object.values(lines).flat().filter(p=>!p.casing&&p.l.options.dashArray==='2 10').length")
-    check(nf == 1 and LP_ok(pg), f'点線はフェリー区間だけ（{nf}）')
+    check(nf == 2 and LP_ok(pg), f'点線はフェリー区間と大隅縦貫道の目安だけ（{nf}）')
     check(not errs, 'エラーが出ていない ' + ' / '.join(errs[:3]))
     ctx.close()
 
