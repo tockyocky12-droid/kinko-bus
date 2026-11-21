@@ -231,6 +231,12 @@ with sync_playwright() as p:
     pg.click('[data-b="0"]'); pg.select_option('#stop', '内之牧'); pg.wait_for_timeout(300); g = pg.inner_text('#v-go')
     check('乗り継ぎ2回' in g and pg.get_attribute('#tab-go', 'aria-selected') == 'true', '行き先から：内之牧→空港は乗り継ぎ2回、バス停を変えても画面はそのまま')
     c.close(); e7 += e9
+    c, pg, e10 = at((2026, 11, 20, 8, 0), '大根占')
+    pg.click('#bigtxt'); pg.wait_for_timeout(300); pg.reload(); pg.wait_for_timeout(800)
+    big = pg.evaluate("document.body.classList.contains('big')")
+    tabh = pg.evaluate("Math.max(...[...document.querySelectorAll('.tabs button')].map(b=>b.getBoundingClientRect().height))")
+    check(big and pg.inner_text('#bigtxt') == '文字 小' and pg.evaluate('document.documentElement.scrollWidth') <= 390 and tabh < 70, f'文字を大きく：覚えている・横にはみ出さない・タブが1行（{tabh:.0f}px）')
+    c.close(); e7 += e10
     check(not (e4 + e5 + e6 + e7), 'エラーが出ていない（4） ' + ' / '.join((e4 + e5 + e6 + e7)[:3]))
     br.close()
 
