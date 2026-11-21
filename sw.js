@@ -1,13 +1,13 @@
 // きんこうバスナビ（錦江町のバス）：オフラインでも開けるようにするための仕組み（錦江町森林ナビの sw.js を元にしている）
 // 更新のたびに VER を上げる（index.html の APP_VER と必ず同じにする）
-const VER='v31';
+const VER='v32';
 const BASE=new URL(self.registration.scope).pathname; // 例：/kinko-bus/
 const PFX='bus';                                       // 同じサイトにある森林ナビ・防災ナビの保存分と分けるための名前の頭
 const SHELL=PFX+'-shell-'+VER;
 const STATIC=PFX+'-static-v1';  // 地図の部品（Leaflet）：版番号つきのフォルダなので、アプリを更新しても消さない
 const TILES=PFX+'-tiles-v1';    // 一度見た背景の地図画像
 const SAVED='gsi-saved-v1';     // 森林ナビの「地図を端末に保存」で保存した画像（読むだけ。ここでは消さない）
-const SHELL_FILES=['./','./index.html','./data/timetable.js','./data/stops.js','./data/fares.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const SHELL_FILES=['./','./index.html','./data/timetable.js','./data/stops.js','./data/fares.js','./data/special.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 const STATIC_FILES=['./lib/leaflet-1.9.4/leaflet.css','./lib/leaflet-1.9.4/leaflet.js'];
 const TILE_MAX=2000;            // 背景の地図画像を覚えておく枚数の上限
 

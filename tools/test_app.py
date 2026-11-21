@@ -183,6 +183,38 @@ with sync_playwright() as p:
     ctx.set_offline(False)
     check(not errs, 'エラーが出ていない ' + ' / '.join(errs[:3]))
     ctx.close()
+
+    # ---- 4. 明日の始発・年末年始・よく使うバス停（時計を決めて確かめる） ----
+    import datetime as _D
+    JST = _D.timezone(_D.timedelta(hours=9))
+    def at(when, stop):
+        c = br.new_context(viewport={'width': 390, 'height': 844}, service_workers='block')
+        p_ = c.new_page(); e_ = []; p_.on('pageerror', lambda e: e_.append(str(e)))
+        p_.clock.install(time=_D.datetime(*when, tzinfo=JST))
+        p_.goto(URL); p_.wait_for_timeout(800); p_.select_option('#stop', stop); p_.wait_for_timeout(300)
+        return c, p_, e_
+    c, pg, e4 = at((2026, 11, 20, 21, 30), '大根占')
+    bar = pg.inner_text('#nextbar')
+    check('明日の始発' in bar and '7:05' in bar and bar.index('鹿屋方面') < bar.index('内之牧方面'), '夜：帯に明日の始発（土曜の鹿屋方面 7:05）が早い順に出る')
+    check('明日の始発は 7:05 発' in pg.inner_text('#v-next'), '夜：くわしい画面にも明日の始発')
+    c.close()
+    c, pg, e5 = at((2026, 11, 21, 10, 0), '石蔵')
+    check('11/24（火）の始発' in pg.inner_text('#nextbar'), '土曜の根占〜佐多：次の平日（祝日の翌日）の始発が出る')
+    c.close()
+    c, pg, e6 = at((2026, 12, 30, 7, 0), '根占')
+    bar = pg.inner_text('#nextbar'); vn = pg.inner_text('#v-next')
+    check('年末年始で運休' in bar and '1/4（月）の始発' in bar, '12/30：根占〜佐多は運休、次は1/4')
+    check('年末年始のため今日は運休' in vn and '鹿屋営業所' in vn and '8:15発' in vn, '12/30：運休の表示・年末年始のお知らせ・海岸線はふだんの時刻')
+    c.close()
+    c, pg, e7 = at((2026, 11, 20, 9, 0), '大根占')
+    pg.click('.favtg'); pg.select_option('#stop', '工業高校前'); pg.wait_for_timeout(200); pg.click('.favtg'); pg.wait_for_timeout(200)
+    pg.reload(); pg.wait_for_timeout(800)
+    favs = pg.eval_on_selector_all('.fav', 'e=>e.map(x=>x.textContent)')
+    pg.click('.fav >> nth=0'); pg.wait_for_timeout(300)
+    check(favs == ['★ 大根占', '★ 工業高校前'] and pg.input_value('#stop') == '大根占', f'よく使うバス停：登録・保存・押して切り替え {favs}')
+    check(pg.evaluate("Object.keys(localStorage).every(k=>k.startsWith('bus:'))"), '端末の記録は bus: 付き')
+    c.close()
+    check(not (e4 + e5 + e6 + e7), 'エラーが出ていない（4） ' + ' / '.join((e4 + e5 + e6 + e7)[:3]))
     br.close()
 
 print('\n結果:', 'すべてOK' if not fails else f'{len(fails)}件NG')

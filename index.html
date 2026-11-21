@@ -112,6 +112,13 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .nb-t span{font-size:11px;font-weight:700;color:var(--accent)}
 .nb-end{font-size:13px;color:var(--muted)}
 .none{color:var(--muted);font-size:14px;padding:6px 2px}
+.none b{color:var(--fg)}
+.favs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.fav,.favtg{font:inherit;font-size:14px;padding:6px 12px;border-radius:999px;border:1.5px solid #d97706;background:var(--panel);color:var(--fg);cursor:pointer}
+.fav{font-weight:700}.fav.cur{background:#d97706;color:#fff}
+.favtg{font-size:13px;color:var(--muted);border:1.5px dashed var(--line)}
+.ynote{font-size:13px;line-height:1.5;color:var(--warn-fg);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;padding:8px 10px;margin:6px 0 10px}
+.nb-t span.tm{color:var(--muted)}
 .trip{display:block;width:100%;text-align:left;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:6px 0;cursor:pointer}
 .trip .row{display:flex;align-items:baseline;gap:10px}
 .trip .tt{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;min-width:3.2em}
@@ -182,6 +189,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     <div class="sel" id="stoplbl">乗るバス停（地図のバス停を押しても選べます）</div>
     <button type="button" id="stopbtn" aria-haspopup="dialog" aria-describedby="stoplbl"><span id="stopname"></span><small>路線から選ぶ ▼</small></button>
     <select id="stop" class="sr" tabindex="-1" aria-hidden="true"></select>
+    <div class="favs" id="favs" aria-label="よく使うバス停"></div>
     <div class="day"><span>表示：<span class="today" id="daylbl"></span></span>
       <div class="seg" role="group" aria-label="ダイヤ">
         <button data-mode="auto">今日</button><button data-mode="weekday">平日</button><button data-mode="holiday">土日祝</button>
@@ -207,7 +215,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     バス停の位置：国土数値情報（バス停留所データ）令和4年度（国土交通省）を加工して作成。<br>
     路線の道すじ：国土数値情報（バスルートデータ）平成23年度（国土交通省）の道路の線を使い、バス停どうしを道に沿ってつないで作成。目安です（直行バスの垂水港〜鴨池港はフェリーで、点線で表しています。空港バスの線は高隈・牧之原・霧島市役所前経由の道すじで、高速道路経由の便は別の道を通ります）。<br>
     背景の地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
-    <p>年末年始などの運休は時刻表に書かれていないため、反映していません。祝日は自動で判定しています。<br>
+    <p>祝日は自動で判定しています。年末年始は、確かめられた運休（根占〜佐多間の12月30日〜1月3日）だけを反映しています。ほかの路線の年末年始の運行は、各問い合わせ先で確かめてください。<br>
     田代地区コミュニティバスは無料です。路線バス・直行バスの運賃と問い合わせ：鹿児島交通株式会社 鹿屋営業所 0994-65-2258（<a href="https://www.iwasaki-corp.com/kagoshima_kotsu/contact/" target="_blank" rel="noopener">お問合せページ</a>）</p>
     <p><button id="clr" class="pbtn">保存した地図の画像を消す</button></p>
     <p>版 <span id="ver"></span></p>
@@ -219,9 +227,10 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/timetable.js"></script>
 <script src="./data/stops.js"></script>
 <script src="./data/fares.js"></script>
+<script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v31';
+const APP_VER='v32';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -266,18 +275,25 @@ function holidays(y){
   return hcache[y]=s;
 }
 const isHoliday=n=>n.wd===0||n.wd===6||holidays(n.y).has(n.m+'-'+n.d);
+// 年末年始など（data/special.js）。n は日付（{y,m,d,wd}）
+const mdIn=(n,from,to)=>{const k=n.m*100+n.d,[a,b]=[from,to].map(x=>{const [m,d]=x.split('-').map(Number);return m*100+d});return a<=b?k>=a&&k<=b:k>=a||k<=b};
+const special=(rid,n)=>n&&typeof SPECIAL_DAYS!=='undefined'?SPECIAL_DAYS.find(x=>x.route===rid&&mdIn(n,x.from,x.to))||null:null;
+const addDays=(n,i)=>{const x=new Date(Date.UTC(n.y,n.m-1,n.d+i));return {y:x.getUTCFullYear(),m:x.getUTCMonth()+1,d:x.getUTCDate(),wd:x.getUTCDay(),min:0}};
+const dayCtx=n=>({hol:isHoliday(n),date:n});
 const runs=(t,hol)=>!(hol&&t.days==='weekday')&&!(!hol&&t.days==='holiday');
 const left=n=>n<60?'あと'+n+'分':'あと'+Math.floor(n/60)+'時間'+(n%60)+'分';
 const WD='日月火水木金土';
 
 // あるバス停から出る便（路線・方向ごと）
-function departures(me,hol){
+// ctx：{hol:土日祝か, date:日付（「今日」などの実際の日。年末年始の運休を反映）}
+function departures(me,ctx){
   const out=[];
   ROUTES.forEach((r,ri)=>Object.entries(r.dirs).forEach(([dk,D])=>{
     const at=D.stops.indexOf(me);if(at<0||at===D.stops.length-1)return;
     const list=r.trips.map((t,i)=>({t,key:ri+'-'+i})).filter(({t})=>t.dir===dk&&t.at[me]&&t.last!==me);
     if(!list.length)return; // 通過するだけ
-    out.push({r,dk,D,today:list.filter(({t})=>runs(t,hol)).sort((a,b)=>mins(a.t.at[me])-mins(b.t.at[me]))});
+    const sp=special(r.id,ctx.date),hol=sp&&sp.type==='holiday'?true:ctx.hol;
+    out.push({r,dk,D,off:sp&&sp.type==='off'?sp:null,today:sp&&sp.type==='off'?[]:list.filter(({t})=>runs(t,hol)).sort((a,b)=>mins(a.t.at[me])-mins(b.t.at[me]))});
   }));
   return out;
 }
@@ -308,14 +324,21 @@ const yenTxt=v=>v===0?'無料':v==null?'':v.toLocaleString('ja-JP')+'円';
 const fareTo=(r,t,a,b)=>{const y=yenTxt(fareYen(r,t,a,b));return y?'・'+y:''};
 
 // 同じ方面（例：鹿屋方面の海岸線と中央線）は1つにまとめ、時刻順に並べる
-function mergedDeps(me,hol){
+function mergedDeps(me,ctx){
   const g=new Map();
-  departures(me,hol).forEach(({r,D,today})=>{
-    if(!g.has(D.name))g.set(D.name,{name:D.name,routes:[],today:[]});
-    const x=g.get(D.name);x.routes.push(r);today.forEach(it=>x.today.push({...it,r,D}));
+  departures(me,ctx).forEach(({r,D,today,off})=>{
+    if(!g.has(D.name))g.set(D.name,{name:D.name,routes:[],today:[],off:[]});
+    const x=g.get(D.name);x.routes.push(r);if(off)x.off.push({r,off});today.forEach(it=>x.today.push({...it,r,D}));
   });
   return [...g.values()].map(x=>(x.today.sort((a,b)=>mins(a.t.at[me])-mins(b.t.at[me])),x));
 }
+// 今日の便が終わったあと（または今日は便がないとき）の、次に走る日の始発（7日先まで）
+function nextFirst(me,name,now){
+  for(let i=1;i<=7;i++){const n=addDays(now,i),g=mergedDeps(me,dayCtx(n)).find(x=>x.name===name);
+    if(g&&g.today.length)return {n,i,it:g.today[0],when:i===1?'明日':`${n.m}/${n.d}（${WD[n.wd]}）`}}
+  return null;
+}
+const firstTxt=(f,me)=>f?`${f.when}の始発は <b>${f.it.t.at[me]}</b> 発（${esc(f.it.r.short)}・${esc(f.it.t.last)}行き）です。`:'';
 // まとめた方面の色（路線が2つ以上なら、色を縦に分ける）
 const stripe=rs=>rs.length<2?rs[0].color:'linear-gradient(to bottom,'+rs.map((r,i)=>`${r.color} ${i*100/rs.length}% ${(i+1)*100/rs.length}%`).join(',')+')';
 const rtag=r=>`<span class="rtag" style="background:${r.color}">${esc(r.short)}</span>`;
@@ -357,6 +380,19 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)close
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;render()});
 const tabs={next:document.getElementById('tab-next'),all:document.getElementById('tab-all')};
 Object.entries(tabs).forEach(([k,b])=>b.onclick=()=>{tab=k;render()});
+// よく使うバス停（最大3つ。端末に保存）。押すとそのバス停に切り替わる
+const FAV_MAX=3,favBox=document.getElementById('favs');
+let favs=(()=>{try{return JSON.parse(store.get('favs')||'[]').filter(x=>ALL.includes(x))}catch(e){return []}})();
+function drawFavs(){
+  const s=sel.value,on=favs.includes(s);
+  favBox.innerHTML=favs.map(f=>`<button type="button" class="fav${f===s?' cur':''}" data-s="${esc(f)}" aria-pressed="${f===s}">★ ${esc(f)}</button>`).join('')
+    +`<button type="button" class="favtg" aria-pressed="${on}">${on?'☆ 登録を外す':'☆ よく使うバス停に登録'}</button>`;
+  favBox.querySelectorAll('.fav').forEach(b=>b.onclick=()=>{if(b.dataset.s!==sel.value)selectStop(b.dataset.s,{fly:true})});
+  favBox.querySelector('.favtg').onclick=()=>{
+    if(on)favs=favs.filter(x=>x!==s);
+    else{favs.push(s);if(favs.length>FAV_MAX){toast(`「${favs[0]}」を外して、「${s}」を登録しました（${FAV_MAX}つまで）`);favs.shift()}else toast(`「${s}」を登録しました。★を押すと切り替わります`)}
+    store.set('favs',JSON.stringify(favs));drawFavs()};
+}
 // 便の印。並び順はいつも「変更 → 運休 → 経由 → 乗り継ぎ」で、時刻の下の行にまとめる
 // 色：黄＝10月1日に変わった便、灰＝補足、緑＝押すと乗り継ぎ時刻が見られる
 // 「今日」の表示では、その日に走る便だけを出しているので、曜日の印（土日祝運休など）は出さない
@@ -378,17 +414,20 @@ function lastLine(today,nx,me){
 // 地図の下の端に、選んだバス停の「次のバス」を出す（いつも今日の時刻）
 const nbar=document.getElementById('nextbar'),NB_MAX=3;
 function renderBar(){
-  const s=sel.value,now=jstNow(),hol=isHoliday(now);
-  const rows=mergedDeps(s,hol).map(({name,routes,today})=>{const nx=today.find(({t})=>mins(t.at[s])>=now.min);return {name,routes,today,nx,m:nx?mins(nx.t.at[s]):1e9}})
-    .filter(x=>x.today.length).sort((a,b)=>a.m-b.m);
-  let h=`<div class="nb-h"><span>${esc(s)} から</span><small>${rows.filter(x=>x.nx).length>NB_MAX?'ほか'+(rows.filter(x=>x.nx).length-NB_MAX)+'方面・':''}くわしく ▼</small></div>`;
-  if(!rows.length)h+=`<div class="nb-end">今日、ここから出る便はありません。</div>`;
-  const live=rows.filter(x=>x.nx);
-  if(rows.length&&!live.length)h+=`<div class="nb-end">今日の便は、すべて終わりました。</div>`;
-  live.slice(0,NB_MAX).forEach(({name,routes,today,nx})=>{
-    const ls=today[today.length-1],last=ls===nx?'<span class="lastone">これが最終</span>':`最終 <b>${ls.t.at[s]}</b>`;
-    h+=`<div class="nb-r"><i style="background:${stripe(routes)}"></i><div class="nb-d"><div>${esc(name)}</div><div class="sub">${esc(nx.r.short)}・${last}</div></div>`
-      +`<div class="nb-t"><b>${nx.t.at[s]}</b><span>${left(mins(nx.t.at[s])-now.min)}</span></div></div>`;
+  const s=sel.value,now=jstNow(),ctx=dayCtx(now);
+  // 今日の便がない方面も、平日・土日祝のどちらかに便があれば出して、次の始発を見せる
+  const names=new Set([...mergedDeps(s,{hol:false}),...mergedDeps(s,{hol:true})].filter(x=>x.today.length).map(x=>x.name));
+  // 並び順：今日これから出る便の早い順 → 今日は終わった方面（次の始発の早い順）
+  const rows=mergedDeps(s,ctx).filter(x=>names.has(x.name)).map(({name,routes,today,off})=>{const nx=today.find(({t})=>mins(t.at[s])>=now.min),f=nx?null:nextFirst(s,name,now);
+    return {name,routes,today,off,nx,f,m:nx?mins(nx.t.at[s]):f?1e5*f.i+mins(f.it.t.at[s]):1e9}}).sort((a,b)=>a.m-b.m);
+  let h=`<div class="nb-h"><span>${esc(s)} から</span><small>${rows.length>NB_MAX?'ほか'+(rows.length-NB_MAX)+'方面・':''}くわしく ▼</small></div>`;
+  if(!rows.length)h+=`<div class="nb-end">ここから出る便はありません。</div>`;
+  rows.slice(0,NB_MAX).forEach(({name,routes,today,off,nx,f})=>{
+    if(nx){const ls=today[today.length-1],last=ls===nx?'<span class="lastone">これが最終</span>':`最終 <b>${ls.t.at[s]}</b>`;
+      h+=`<div class="nb-r"><i style="background:${stripe(routes)}"></i><div class="nb-d"><div>${esc(name)}</div><div class="sub">${esc(nx.r.short)}・${last}</div></div>`
+        +`<div class="nb-t"><b>${nx.t.at[s]}</b><span>${left(mins(nx.t.at[s])-now.min)}</span></div></div>`;return}
+    h+=`<div class="nb-r"><i style="background:${stripe(routes)}"></i><div class="nb-d"><div>${esc(name)}</div><div class="sub">${today.length?'今日の便は終わりました':off.length===routes.length?esc(off[0].off.why)+'で運休':'今日は便がありません'}</div></div>`
+      +(f?`<div class="nb-t"><b>${f.it.t.at[s]}</b><span class="tm">${f.when}の始発</span></div>`:'<div class="nb-t"></div>')+'</div>';
   });
   nbar.innerHTML=h;nbar.hidden=false;
   document.getElementById('locate').style.bottom=(nbar.offsetHeight+16)+'px';
@@ -398,23 +437,28 @@ nbar.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();nbar.oncl
 
 function render(){
   renderBar();
-  const now=jstNow(),hol=mode==='auto'?isHoliday(now):mode==='holiday',live=mode==='auto';
+  const now=jstNow(),hol=mode==='auto'?isHoliday(now):mode==='holiday',live=mode==='auto',ctx=live?{hol,date:now}:{hol};
+  drawFavs();
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===mode));
   document.getElementById('daylbl').textContent=live?`${now.m}月${now.d}日（${WD[now.wd]}）${hol?'土日祝':'平日'}の時刻`:(hol?'土日祝':'平日')+'の時刻';
   for(const [k,b] of Object.entries(tabs)){b.setAttribute('aria-selected',k===tab);document.getElementById('v-'+k).hidden=k!==tab}
   const me=sel.value;
   let h='';
+  if(live&&typeof SPECIAL_NOTICE!=='undefined'&&mdIn(now,SPECIAL_NOTICE.from,SPECIAL_NOTICE.to))h+=`<div class="ynote">${esc(SPECIAL_NOTICE.text)}</div>`;
   // 詳しい画面は、利用の多い「鹿屋方面」を上にする（ほかは今までの順）
   // 同じ方面は路線をまとめて時刻順（便ごとに路線の印を付ける）
-  mergedDeps(me,hol).sort((x,y)=>(y.name==='鹿屋方面')-(x.name==='鹿屋方面')).forEach(({name,routes,today})=>{
+  mergedDeps(me,ctx).sort((x,y)=>(y.name==='鹿屋方面')-(x.name==='鹿屋方面')).forEach(({name,routes,today,off})=>{
     const multi=routes.length>1;
     h+=`<div class="grp"><div class="grp-h"><i style="background:${stripe(routes)}"></i><div><span class="rt">${multi?routes.map(r=>esc(r.short)).join('・'):esc(routes[0].name)}</span><span class="dn">${esc(name)}</span></div></div>`;
     routes.forEach(r=>{if(r.note)h+=`<p class="rnote">${multi?esc(r.short)+'：':''}${esc(r.note)}</p>`});
-    if(multi&&today.length)routes.filter(r=>!today.some(it=>it.r===r)).forEach(r=>{h+=`<div class="none">${esc(r.short)}は、${hol?'土日祝':'平日'}はこのバス停から${esc(name)}へ走りません。</div>`});
-    if(!today.length){h+=`<div class="none">${hol?'土日祝':'平日'}は、このバス停から${esc(name)}の便はありません。</div></div>`;return}
+    off.forEach(({r,off:o})=>{h+=`<div class="none">${esc(r.short)}は、${esc(o.why)}のため今日は運休です。</div>`});
+    if(multi&&today.length)routes.filter(r=>!today.some(it=>it.r===r)&&!off.some(o=>o.r===r)).forEach(r=>{h+=`<div class="none">${esc(r.short)}は、${hol?'土日祝':'平日'}はこのバス停から${esc(name)}へ走りません。</div>`});
+    if(!today.length){if(!off.length||off.length<routes.length)h+=`<div class="none">${hol?'土日祝':'平日'}は、このバス停から${esc(name)}の便はありません。</div>`;
+      if(live){const f=nextFirst(me,name,now);if(f)h+=`<div class="none">${firstTxt(f,me)}</div>`}
+      h+='</div>';return}
     if(live){const nx=today.find(({t})=>mins(t.at[me])>=now.min);
       h+=nx?`<div class="next"><div class="lbl">次のバス</div><div class="t">${nx.t.at[me]}<small>発</small></div><div>${multi?rtag(nx.r)+' ':''}${esc(nx.t.last)}行き・${nx.t.at[nx.t.last]}着${fareTo(nx.r,nx.t,me,nx.t.last)}</div><div class="in">${left(mins(nx.t.at[me])-now.min)}</div>${lastLine(today,nx,me)}</div>`
-        :`<div class="none">今日の${esc(name)}の便は終わりました。</div>`}
+        :`<div class="none">今日の${esc(name)}の便は終わりました。${firstTxt(nextFirst(me,name,now),me)}</div>`}
     today.forEach(({t,key,r,D})=>{
       const past=live&&mins(t.at[me])<now.min;
       h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${multi?rtag(r)+' ':''}${esc(t.last)}行き・${t.at[t.last]}着${fareTo(r,t,me,t.last)}</span></div>${badges(t,open===key)}`;
