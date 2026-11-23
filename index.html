@@ -276,7 +276,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v39';
+const APP_VER='v40';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -597,6 +597,7 @@ function render(){
   const R=ROUTES.find(r=>r.id===route);
   let a='<div class="rsel" role="group" aria-label="路線">'+ROUTES.map(r=>`<button data-r="${r.id}" aria-pressed="${r.id===route}">${esc(r.short)}</button>`).join('')+'</div>';
   a+=`<h3>${esc(R.name)}</h3>`;if(R.note)a+=`<p class="rnote">${esc(R.note)}</p>`;
+  if(R.partial)a+=`<p class="legend">主なバス停だけを載せています。途中のバス停の時刻は、下の出典の時刻表で確かめてください。</p>`;
   Object.entries(R.dirs).forEach(([dk,D])=>{
     const ts=R.trips.filter(t=>t.dir===dk);
     a+=`<h3>▶ ${esc(D.name)}</h3><div class="tblwrap"><table><thead><tr><th>停留所</th>${ts.map((t,k)=>`<th>${k+1}便${t.days==='weekday'?'<br>土日祝運休':t.days==='holiday'?'<br>土日祝のみ':''}${t.tags.length?'<br>'+t.tags.map(esc).join(' '):''}</th>`).join('')}</tr></thead><tbody>`;
@@ -706,7 +707,7 @@ function setFocus(id){
   if(selRing)selRing.bringToFront();
   const n=ALL.filter(s=>(ROUTES_AT[s]||new Set()).has(id)).length;
   fb.style.background=r.color;fb.hidden=false;
-  fb.innerHTML=`<span>${esc(r.name)}<small>この路線だけを濃く表示中（バス停 ${n}か所）</small></span><button type="button" aria-label="全部の路線の表示に戻す">✕ 全路線</button>`;
+  fb.innerHTML=`<span>${esc(r.name)}<small>この路線だけを濃く表示中（${r.partial?`主なバス停 ${n}か所。途中のバス停は省略`:r.freeStop?`バス停 ${n}か所。バス停以外でも乗り降りできます（フリー乗降）`:`バス停 ${n}か所`}）</small></span><button type="button" aria-label="全部の路線の表示に戻す">✕ 全路線</button>`;
   fb.querySelector('button').onclick=()=>setFocus(null);
   styleMap();
 }

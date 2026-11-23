@@ -241,6 +241,7 @@ with sync_playwright() as p:
     pg.click('.chip[data-r=kaigan]'); pg.wait_for_timeout(600)
     fb = pg.inner_text('#focusbar')
     op = pg.evaluate("[lines.chuo.find(p=>!p.casing).l.options.opacity, lines.kaigan.find(p=>!p.casing).l.options.opacity, focusLines.length>0]")
+    check('主なバス停 9か所' in fb, '海岸線は「主なバス停」と表示')
     check('海岸線' in fb and op[0] < 0.5 and op[1] == 1 and op[2] and pg.get_attribute('.chip[data-r=kaigan]', 'aria-pressed') == 'true', f'路線のボタン：選んだ路線だけ濃く、ほかは薄く、上に路線名（{op}）')
     pg.click('.chip[data-r=kaigan]'); pg.wait_for_timeout(300)
     check(pg.is_hidden('#focusbar') and pg.evaluate("lines.chuo.find(p=>!p.casing).l.options.opacity") == 1, '同じボタンをもう一度押すと全路線の表示に戻る')
