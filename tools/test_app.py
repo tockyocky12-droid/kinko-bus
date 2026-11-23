@@ -232,7 +232,7 @@ with sync_playwright() as p:
     check(pg.input_value('#stop') == '鹿児島空港' and '16:40 → 19:09着' in g and pg.get_attribute('[data-d="大根占"]', 'aria-pressed') == 'true', '行き先から：出発を空港に変えると乗るバス停も空港になり、行き先はさっきの大根占（帰り道）')
     st = pg.evaluate("planText(goPlans[goPlans.length-1])")
     check('鹿児島空港 16:40発 → 大根占 19:09着' in st and '鹿屋で乗り継ぎ' in st and 'kinko-bus' in st and pg.locator('.sendbtn').count() == len(pg.evaluate('goPlans')), f'この行き方を送る：送る文ができる（{st.splitlines()[1] if st else ""}）')
-    check('norimono-info.com' in pg.inner_html('#v-go') and 'norimono-info.com' in pg.inner_html('footer') and pg.is_hidden('#reportp'), '運行情報へのリンク・知らせる先は設定するまで出さない')
+    check('norimono' not in pg.content() and 'kagoshima_kotsu/" target' in pg.inner_html('#v-go') and pg.is_hidden('#reportp'), '運行情報へのリンク・知らせる先は設定するまで出さない')
     pg.click('[data-d="田代麓"]'); pg.wait_for_timeout(200)
     check(pg.get_attribute('[data-d="田代麓"]', 'aria-pressed') == 'true' and '田代麓' in pg.inner_text('#v-go'), '行き先から：帰りの行き先を田代麓に変えられる')
     pg.select_option('#stop', '鹿児島中央駅'); pg.wait_for_timeout(300)
