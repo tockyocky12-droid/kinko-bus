@@ -98,6 +98,8 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .gosel button{font:inherit;font-size:15px;font-weight:700;padding:8px 12px;border:1.5px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
 .gosel button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .gosel.dir button{font-size:13px;padding:6px 12px}
+.golbl{margin:8px 2px 0;font-size:13px;color:var(--muted)}.golbl b{color:var(--fg)}
+.gosel-other{font:inherit;font-size:14px;padding:7px 10px;border:1.5px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);max-width:100%}
 .it{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:var(--panel)}
 .it.past{opacity:.5}
 .it-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
@@ -282,7 +284,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v41';
+const APP_VER='v42';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -408,6 +410,9 @@ const firstTxt=(f,me)=>f?`${f.when}の始発は <b>${f.it.t.at[me]}</b> 発（${
 // ---- 行き先から探す（乗り継ぎは2回まで、乗り継ぎ時間は5分以上） ----
 const GO_DEST=['鹿屋','鹿児島空港','鹿児島中央駅'],XFER=5;
 let goDest=store.get('goDest')||'鹿児島空港',goBack=false;if(!GO_DEST.includes(goDest))goDest='鹿児島空港';
+// 「帰る」：鹿児島空港・鹿児島中央駅・鹿屋から、錦江町まわりのバス停へ（帰省の帰り道）
+const HOME=['大根占','神川','田代麓','花瀬橋','内之牧','根占'],OUTSIDE=new Set(['鹿児島空港','霧島市役所前','鹿児島中央駅','金生町（山形屋）','垂水港']);
+let goFrom=store.get('goFrom')||'鹿児島空港',goHome=store.get('goHome'),goLastMe=null;
 function runningTrips(ctx){
   const out=[];
   ROUTES.forEach(r=>{const sp=special(r.id,ctx.date);if(sp&&sp.type==='off')return;const hol=routeHol(r,ctx);
@@ -439,9 +444,20 @@ const dur=n=>n<60?n+'分':Math.floor(n/60)+'時間'+String(n%60).padStart(2,'0')
 function planFare(p){let s=0,miss=[];p.forEach(l=>{const y=fareYen(l.r,l.t,l.from,l.to);if(y==null)miss.push(l.r.short);else s+=y});
   return miss.length?(s?yenTxt(s)+'＋'+miss.join('・')+'の運賃':miss.join('・')+'の運賃は未収録'):(s?yenTxt(s):'無料')}
 function renderGo(me,ctx,live,now){
-  let h=`<div class="gosel dir" role="group" aria-label="向き"><button data-b="0" aria-pressed="${!goBack}">${esc(me)}から行く</button><button data-b="1" aria-pressed="${goBack}">${esc(me)}へ帰る</button></div>`;
-  h+=`<div class="gosel" role="group" aria-label="行き先">${GO_DEST.map(d=>`<button data-d="${esc(d)}" aria-pressed="${d===goDest}">${esc(d)}${goBack?'から':'へ'}</button>`).join('')}</div>`;
-  const O=goBack?goDest:me,D=goBack?me:goDest;
+  // 鹿児島空港・中央駅などのバス停を選んでいるときは、最初から「帰る」にして、そこを出発にする
+  if(me!==goLastMe){goLastMe=me;if(OUTSIDE.has(me)){goBack=true;goFrom=me}}
+  if(!goHome||!ALL.includes(goHome)||OUTSIDE.has(goHome))goHome=!OUTSIDE.has(me)?me:(favs.find(f=>!OUTSIDE.has(f))||'大根占');
+  const froms=[...GO_DEST,...(OUTSIDE.has(me)&&!GO_DEST.includes(me)?[me]:[])];if(!froms.includes(goFrom))goFrom='鹿児島空港';
+  let h=`<div class="gosel dir" role="group" aria-label="向き"><button data-b="0" aria-pressed="${!goBack}">行く</button><button data-b="1" aria-pressed="${goBack}">帰る（錦江町方面へ）</button></div>`;
+  if(!goBack){
+    h+=`<p class="golbl">出発：<b>${esc(me)}</b>（乗るバス停）　行き先：</p><div class="gosel" role="group" aria-label="行き先">${GO_DEST.map(d=>`<button data-d="${esc(d)}" aria-pressed="${d===goDest}">${esc(d)}へ</button>`).join('')}</div>`;
+  }else{
+    const others=ALL.filter(s=>!OUTSIDE.has(s)&&!HOME.includes(s)&&!GO_DEST.includes(s));
+    h+=`<p class="golbl">出発：</p><div class="gosel" role="group" aria-label="出発">${froms.map(d=>`<button data-f="${esc(d)}" aria-pressed="${d===goFrom}">${esc(d)}から</button>`).join('')}</div>`
+      +`<p class="golbl">行き先：</p><div class="gosel" role="group" aria-label="行き先">${HOME.map(d=>`<button data-h="${esc(d)}" aria-pressed="${d===goHome}">${esc(d)}へ</button>`).join('')}`
+      +`<select id="gohome2" class="gosel-other" aria-label="ほかのバス停"><option value="">ほかのバス停 ▼</option>${others.map(s=>`<option${s===goHome?' selected':''}>${esc(s)}</option>`).join('')}</select></div>`;
+  }
+  const O=goBack?goFrom:me,D=goBack?goHome:goDest;
   if(O===D)return h+`<div class="none">乗るバス停を ${esc(goDest)} 以外にすると、乗り継ぎを含めた行き方が出ます。</div>`;
   const L=plans(O,D,ctx);
   if(!L.length){h+=`<div class="none">${live?'今日':(ctx.hol?'土日祝':'平日')}は、${esc(O)}から${esc(D)}へ乗り継ぎ2回までで行ける便がありません。</div>`;}
@@ -629,7 +645,10 @@ function render(){
   const vg=document.getElementById('v-go');
   if(tab==='go'){vg.innerHTML=renderGo(me,ctx,live,now);
     vg.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{goDest=b.dataset.d;store.set('goDest',goDest);render()});
-    vg.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{goBack=b.dataset.b==='1';render()})}
+    vg.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{goBack=b.dataset.b==='1';render()});
+    vg.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{goFrom=b.dataset.f;store.set('goFrom',goFrom);render()});
+    vg.querySelectorAll('[data-h]').forEach(b=>b.onclick=()=>{goHome=b.dataset.h;store.set('goHome',goHome);render()});
+    const g2=vg.querySelector('#gohome2');if(g2)g2.onchange=()=>{if(g2.value){goHome=g2.value;store.set('goHome',goHome);render()}}}
   const va=document.getElementById('v-all');va.innerHTML=a;
   va.querySelectorAll('.rsel button').forEach(b=>b.onclick=()=>{route=b.dataset.r;store.set('route',route);render()});
   updateMap(me);
