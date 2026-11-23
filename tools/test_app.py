@@ -198,7 +198,8 @@ with sync_playwright() as p:
     c, pg, e4 = at((2026, 11, 20, 21, 30), '大根占')
     bar = pg.inner_text('#nextbar')
     check('明日の始発' in bar and '7:05' in bar and bar.index('鹿屋方面') < bar.index('内之牧方面'), '夜：帯に明日の始発（土曜の鹿屋方面 7:05）が早い順に出る')
-    check('明日の始発は 7:05 発' in pg.inner_text('#v-next'), '夜：くわしい画面にも明日の始発')
+    fc = pg.locator('#v-next .next.first').first
+    check(fc.count() == 1 and '明日 11月21日（土）の始発' in fc.inner_text() and '7:05' in fc.inner_text() and '今日の便は終わりました' in fc.inner_text(), '夜：くわしい画面に明日の始発を大きな枠で出す（v49）')
     c.close()
     c, pg, e5 = at((2026, 11, 21, 10, 0), '石蔵')
     check('11/24（火）の始発' in pg.inner_text('#nextbar'), '土曜の根占〜佐多：次の平日（祝日の翌日）の始発が出る')

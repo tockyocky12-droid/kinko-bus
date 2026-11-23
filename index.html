@@ -132,6 +132,7 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .next .lbl{font-size:13px;color:var(--muted)}
 .next .t{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
 .next .t small{font-size:16px;font-weight:400;margin-left:4px}
+.next.first{border-style:dashed}.next.first .lbl{color:var(--fg);font-weight:700}
 .next .in{font-size:15px;font-weight:700;color:var(--accent)}
 .next .last,.nb-last{font-size:13px;color:var(--muted);margin-top:2px}
 .next .last b,.nb-last b{color:var(--fg)}
@@ -307,7 +308,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v48';
+const APP_VER='v49';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -433,6 +434,8 @@ function nextFirst(me,name,now){
     if(g&&g.today.length)return {n,i,it:g.today[0],when:i===1?'明日':`${n.m}/${n.d}（${WD[n.wd]}）`}}
   return null;
 }
+// 今日の便が終わったあとの「明日の始発」を、次のバスと同じ大きな枠で出す（v49）
+const firstCard=(f,me,multi,head)=>{const {r,t}=f.it;return `<div class="next first"><div class="lbl">${head?esc(head)+' → ':''}${f.i===1?`明日 ${f.n.m}月${f.n.d}日（${WD[f.n.wd]}）`:esc(f.when)}の始発</div><div class="t">${t.at[me]}<small>発</small></div><div>${multi?rtag(r)+' ':''}${esc(t.last)}行き・${t.at[t.last]}着${fareTo(r,t,me,t.last)}</div></div>`};
 const firstTxt=(f,me)=>f?`${f.when}の始発は <b>${f.it.t.at[me]}</b> 発（${esc(f.it.r.short)}・${esc(f.it.t.last)}行き）です。`:'';
 // ---- 行き先から探す（乗り継ぎは2回まで、乗り継ぎ時間は5分以上） ----
 const GO_DEST=['鹿屋','鹿児島空港','鹿児島中央駅'],XFER=5;
@@ -650,11 +653,11 @@ function render(){
     off.forEach(({r,off:o})=>{h+=`<div class="none">${esc(r.short)}は、${esc(o.why)}のため今日は運休です。</div>`});
     if(multi&&today.length)routes.filter(r=>!today.some(it=>it.r===r)&&!off.some(o=>o.r===r)).forEach(r=>{h+=`<div class="none">${esc(r.short)}は、${hol?'土日祝':'平日'}はこのバス停から${esc(name)}へ走りません。</div>`});
     if(!today.length){if(!off.length||off.length<routes.length)h+=`<div class="none">${hol?'土日祝':'平日'}は、このバス停から${esc(name)}の便はありません。</div>`;
-      if(live){const f=nextFirst(me,name,now);if(f)h+=`<div class="none">${firstTxt(f,me)}</div>`}
+      if(live){const f=nextFirst(me,name,now);if(f)h+=firstCard(f,me,multi,'')}
       h+='</div>';return}
     if(live){const nx=today.find(({t})=>mins(t.at[me])>=now.min);
       h+=nx?`<div class="next"><div class="lbl">次のバス</div><div class="t">${nx.t.at[me]}<small>発</small></div><div>${multi?rtag(nx.r)+' ':''}${esc(nx.t.last)}行き・${nx.t.at[nx.t.last]}着${fareTo(nx.r,nx.t,me,nx.t.last)}</div><div class="in">${left(mins(nx.t.at[me])-now.min)}</div>${lastLine(today,nx,me)}</div>`
-        :`<div class="none">今日の${esc(name)}の便は終わりました。${firstTxt(nextFirst(me,name,now),me)}</div>`}
+        :(f=>f?firstCard(f,me,multi,'今日の便は終わりました'):`<div class="none">今日の${esc(name)}の便は終わりました。</div>`)(nextFirst(me,name,now))}
     today.forEach(({t,key,r,D})=>{
       const past=live&&mins(t.at[me])<now.min;
       h+=`<button class="trip${past?' past':''}" data-k="${key}" aria-expanded="${open===key}"><div class="row"><span class="tt">${t.at[me]}</span><span class="dst">${multi?rtag(r)+' ':''}${esc(t.last)}行き・${t.at[t.last]}着${fareTo(r,t,me,t.last)}</span></div>${badges(t,open===key)}`;
