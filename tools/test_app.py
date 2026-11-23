@@ -237,6 +237,14 @@ with sync_playwright() as p:
     tabh = pg.evaluate("Math.max(...[...document.querySelectorAll('.tabs button')].map(b=>b.getBoundingClientRect().height))")
     check(big and pg.inner_text('#bigtxt') == '文字 小' and pg.evaluate('document.documentElement.scrollWidth') <= 390 and tabh < 70, f'文字を大きく：覚えている・横にはみ出さない・タブが1行（{tabh:.0f}px）')
     c.close(); e7 += e10
+    c, pg, e11 = at((2026, 11, 23, 10, 0), '神川')
+    pg.click('.chip[data-r=kaigan]'); pg.wait_for_timeout(600)
+    fb = pg.inner_text('#focusbar')
+    op = pg.evaluate("[lines.chuo.find(p=>!p.casing).l.options.opacity, lines.kaigan.find(p=>!p.casing).l.options.opacity, focusLines.length>0]")
+    check('海岸線' in fb and op[0] < 0.5 and op[1] == 1 and op[2] and pg.get_attribute('.chip[data-r=kaigan]', 'aria-pressed') == 'true', f'路線のボタン：選んだ路線だけ濃く、ほかは薄く、上に路線名（{op}）')
+    pg.click('.chip[data-r=kaigan]'); pg.wait_for_timeout(300)
+    check(pg.is_hidden('#focusbar') and pg.evaluate("lines.chuo.find(p=>!p.casing).l.options.opacity") == 1, '同じボタンをもう一度押すと全路線の表示に戻る')
+    c.close(); e7 += e11
     check(not (e4 + e5 + e6 + e7), 'エラーが出ていない（4） ' + ' / '.join((e4 + e5 + e6 + e7)[:3]))
     br.close()
 

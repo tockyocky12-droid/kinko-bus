@@ -50,6 +50,14 @@ body.big .sh-box{max-height:66vh}
 .chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 4px}
 .chip{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
 .chip i{display:inline-block;width:20px;height:6px;border-radius:3px}
+.chip[aria-pressed=true]{background:var(--rc);border-color:var(--rc);color:#fff;font-weight:700}
+.chip[aria-pressed=true] i{background:#fff!important}
+/* 路線を選んだときの地図の上の帯 */
+#focusbar{position:absolute;z-index:500;top:26px;left:56px;right:10px;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-radius:12px;color:#fff;font-size:13.5px;font-weight:700;line-height:1.35;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#focusbar[hidden]{display:none}
+#focusbar small{display:block;font-weight:400;font-size:11.5px;opacity:.9}
+#focusbar button{flex:none;margin-left:auto;font:inherit;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.95);color:#17201a;border:0;border-radius:999px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.leaflet-tooltip.lbl.dim{opacity:.25!important}
 .chip i.dash{background:repeating-linear-gradient(90deg,currentColor 0 5px,transparent 5px 9px)!important}
 main{max-width:680px;margin:0 auto;padding:4px 12px 40px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0}
@@ -198,6 +206,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 </header>
 <div id="mapbox">
   <div id="map" aria-label="バスの路線の地図"></div>
+  <div id="focusbar" hidden role="status"></div>
   <div id="nextbar" hidden role="button" tabindex="0" aria-label="次のバス（押すと時刻をくわしく見る）"></div>
   <button id="locate" class="fab" aria-label="現在地から一番近いバス停を探す">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
@@ -267,7 +276,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v38';
+const APP_VER='v39';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -678,13 +687,40 @@ ALL.forEach(s=>{
   markers[s]=m;
 });
 let selRing=null,onRoutes=new Set();
+// 路線のボタンで選んだ路線（その路線だけをはっきり、ほかは薄く）
+let focusRoute=null,focusLines=null;
+function setFocus(id){
+  focusRoute=id;
+  if(focusLines){focusLines.forEach(p=>p.l.remove());focusLines=null}
+  const fb=document.getElementById('focusbar');
+  document.querySelectorAll('#chips .chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.r===id));
+  if(!id){fb.hidden=true;styleMap();return}
+  const r=ROUTES.find(x=>x.id===id),pts=LINE_PATHS[id];focusLines=[];
+  // 選んだ路線は、ほかの路線と重なる区間も破線にせず、1本の太い線で上に重ねる（フェリーなどは点線のまま）
+  const runs=[];let cur=null;
+  for(let i=0;i<pts.length-1;i++){const f=FERRY.has(segKey(pts[i],pts[i+1]));if(!cur||cur.f!==f){cur={f,pts:[pts[i]]};runs.push(cur)}cur.pts.push(pts[i+1])}
+  runs.forEach(run=>{const d=run.f?'2 10':null;
+    focusLines.push({l:L.polyline(run.pts,{color:'#fff',weight:12,opacity:1,interactive:false,dashArray:d}).addTo(map),casing:true});
+    focusLines.push({l:L.polyline(run.pts,{color:r.color,weight:8,opacity:1,interactive:false,dashArray:d,lineCap:'round'}).addTo(map)})});
+  Object.values(markers).forEach(m=>{if((ROUTES_AT[m.getTooltip().getContent()]||new Set()).has(id))m.bringToFront()});
+  if(selRing)selRing.bringToFront();
+  const n=ALL.filter(s=>(ROUTES_AT[s]||new Set()).has(id)).length;
+  fb.style.background=r.color;fb.hidden=false;
+  fb.innerHTML=`<span>${esc(r.name)}<small>この路線だけを濃く表示中（バス停 ${n}か所）</small></span><button type="button" aria-label="全部の路線の表示に戻す">✕ 全路線</button>`;
+  fb.querySelector('button').onclick=()=>setFocus(null);
+  styleMap();
+}
 // 線とバス停の太さは地図の拡大率に合わせる（広く見るときは細く・小さく、選んだバス停の路線は少しだけ太く）
 const LINE_W=z=>z<=10?2.5:z<=11?3:z<=12?3.5:z<=13?4:z<=14?4.5:5;
 const DOT_R=z=>z<=10?3.5:z<=11?4.5:z<=12?5:6;
 function styleMap(){
   const z=map.getZoom(),w0=LINE_W(z),r=DOT_R(z);
-  for(const [id,ps] of Object.entries(lines)){const w=onRoutes.has(id)?w0+1.5:w0;ps.forEach(p=>p.l.setStyle({weight:p.casing?w+3:w}))}
-  for(const [s,m] of Object.entries(markers)){const xf=m.options.xf;m.setStyle({radius:xf?r+1.5:r,weight:z<=10?2:xf?3:2.5})}
+  for(const [id,ps] of Object.entries(lines)){const w=onRoutes.has(id)?w0+1.5:w0,dim=focusRoute&&focusRoute!==id;
+    ps.forEach(p=>p.l.setStyle({weight:p.casing?w+3:w,opacity:dim?(p.casing?.3:.22):(p.casing?.9:1)}))}
+  if(focusLines)focusLines.forEach(p=>p.l.setStyle({weight:p.casing?w0+6:w0+3}));
+  for(const [s,m] of Object.entries(markers)){const xf=m.options.xf,dim=focusRoute&&!(ROUTES_AT[s]||new Set()).has(focusRoute);
+    m.setStyle({radius:xf?r+1.5:r,weight:z<=10?2:xf?3:2.5,opacity:dim?.3:1,fillOpacity:dim?.4:1});
+    const el=m.getTooltip()&&m.getTooltip().getElement();if(el)el.classList.toggle('dim',!!dim)}
   if(selRing)selRing.setRadius(z<=10?9:z<=12?13:15);
 }
 function updateMap(me){
@@ -705,22 +741,25 @@ map.on('zoomend',()=>{zcls();styleMap()});zcls();
 // 開いたときの地図：選んだバス停のまわり（田代麓から花瀬橋が入るくらい）を、帯に隠れないように見せる
 const OPEN_ZOOM=12;
 // 地図を路線に合わせるときの余白（下は帯に隠れないように）
-const fitPad=()=>({paddingTopLeft:[24,24],paddingBottomRight:[24,nbH()+24]});
+const fitPad=()=>{const fb=document.getElementById('focusbar');return {paddingTopLeft:[24,24+(fb.hidden?0:Math.round(fb.getBoundingClientRect().height)+8)],paddingBottomRight:[24,nbH()+24]}};
 function showStopArea(s){
   if(!STOP_POS[s])return;
   map.setView(STOP_POS[s],OPEN_ZOOM,{animate:false});
   map.panBy([0,Math.round(nbH()/2)],{animate:false});
 }
 function selectStop(s,{fly=false}={}){
+  if(focusRoute&&!(ROUTES_AT[s]||new Set()).has(focusRoute))setFocus(null);
   sel.value=s;document.getElementById('stopname').textContent=s;store.set('stop',s);open=null;mode='auto';if(tab!=='go')tab='next';render();
   if(fly&&STOP_POS[s])map.setView(STOP_POS[s],Math.max(map.getZoom(),13));
 }
 
 // 路線のボタン（押すと、その路線全体が見えるように地図を合わせる）
 {const box=document.getElementById('chips');
-  ROUTES.forEach(r=>{const b=document.createElement('button');b.className='chip';b.type='button';
+  ROUTES.forEach(r=>{const b=document.createElement('button');b.className='chip';b.type='button';b.dataset.r=r.id;b.setAttribute('aria-pressed','false');b.style.setProperty('--rc',r.color);
     b.innerHTML=`<i class="${DOTTED.has(r.id)?'dash':''}" style="background:${r.color};color:${r.color}"></i>${esc(r.short)}`;
-    b.onclick=()=>{map.fitBounds(L.latLngBounds(LINE_PATHS[r.id]),fitPad());route=r.id;store.set('route',route);render()};
+    // もう一度押すと、全部の路線の表示に戻る
+    b.onclick=()=>{if(focusRoute===r.id){setFocus(null);return}
+      setFocus(r.id);map.fitBounds(L.latLngBounds(LINE_PATHS[r.id]),fitPad());route=r.id;store.set('route',route);render()};
     box.append(b)});
 }
 
