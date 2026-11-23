@@ -41,6 +41,7 @@ def ctx_with_tiles(br, log, **kw):
         log.append(route.request.url)
         route.fulfill(status=200, body=TILE, headers={'Content-Type': 'image/png', 'Access-Control-Allow-Origin': '*'})
     ctx.route(re.compile(r'https://cyberjapandata\.gsi\.go\.jp/.*'), gsi)
+    ctx.add_init_script("try{if(!sessionStorage.getItem('t')){localStorage.setItem('bus:nbOpen','1');sessionStorage.setItem('t','1')}}catch(e){}")  # 帯は広げた状態で確かめる
     return ctx
 
 with sync_playwright() as p:
@@ -189,6 +190,7 @@ with sync_playwright() as p:
     JST = _D.timezone(_D.timedelta(hours=9))
     def at(when, stop):
         c = br.new_context(viewport={'width': 390, 'height': 844}, service_workers='block')
+        c.add_init_script("try{if(!sessionStorage.getItem('t')){localStorage.setItem('bus:nbOpen','1');sessionStorage.setItem('t','1')}}catch(e){}")  # 帯は広げた状態で確かめる
         p_ = c.new_page(); e_ = []; p_.on('pageerror', lambda e: e_.append(str(e)))
         p_.clock.install(time=_D.datetime(*when, tzinfo=JST))
         p_.goto(URL); p_.wait_for_timeout(800); p_.select_option('#stop', stop); p_.wait_for_timeout(300)
@@ -246,6 +248,19 @@ with sync_playwright() as p:
     pg.click('.chip[data-r=kaigan]'); pg.wait_for_timeout(300)
     check(pg.is_hidden('#focusbar') and pg.evaluate("lines.chuo.find(p=>!p.casing).l.options.opacity") == 1, '同じボタンをもう一度押すと全路線の表示に戻る')
     c.close(); e7 += e11
+    c = br.new_context(viewport={'width': 390, 'height': 844}, service_workers='block')
+    pg = c.new_page(); e12 = []; pg.on('pageerror', lambda e: e12.append(str(e)))
+    pg.clock.install(time=datetime.datetime.fromisoformat('2026-11-20T08:00:00+09:00'))
+    pg.goto(URL); pg.wait_for_timeout(800)
+    hidden = pg.evaluate("Object.entries(markers).filter(([s,m])=>MID.has(s)).every(([s,m])=>getComputedStyle(m.getTooltip().getElement()).display==='none')")
+    check(pg.evaluate('map.getZoom()') == 12 and hidden, '開いたときの拡大率では、中くらいのバス停の名前は出さない')
+    pg.select_option('#stop', '大根占'); pg.wait_for_timeout(300)
+    h1 = pg.evaluate("Math.round(document.getElementById('nextbar').getBoundingClientRect().height)")
+    one = pg.inner_text('#nextbar')
+    pg.click('#nextbar .nb-tg'); pg.wait_for_timeout(200)
+    h2 = pg.evaluate("Math.round(document.getElementById('nextbar').getBoundingClientRect().height)")
+    check(h1 < 60 and '大根占 から 根占方面' in one and '8:04' in one and 'ほか3方面' in one and h2 > h1 + 40 and pg.evaluate("localStorage.getItem('bus:nbOpen')") == '1', f'帯：最初は1行（{h1}px）、押すと広がり（{h2}px）覚える')
+    c.close(); e7 += e12
     check(not (e4 + e5 + e6 + e7), 'エラーが出ていない（4） ' + ' / '.join((e4 + e5 + e6 + e7)[:3]))
     br.close()
 

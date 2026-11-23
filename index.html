@@ -140,6 +140,11 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .nb-t b{font-size:19px;display:block}
 .nb-t span{font-size:11px;font-weight:700;color:var(--accent)}
 .nb-end{font-size:13px;color:var(--muted)}
+/* たたんだ帯（1行）とたたむ・広げるボタン */
+.nb-r.one{border-bottom:0;padding:4px 0 3px;grid-template-columns:6px minmax(0,1fr) auto auto}
+.nb-r.one .nb-d div:first-child{font-weight:700}
+.nb-tg{font:inherit;font-size:12px;font-weight:700;color:var(--accent);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:6px 9px;white-space:nowrap;cursor:pointer;align-self:center}
+.nb-h .nb-tg{padding:2px 9px}
 .none{color:var(--muted);font-size:14px;padding:6px 2px}
 .none b{color:var(--fg)}
 .favs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
@@ -197,6 +202,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 .leaflet-tooltip.lbl::before{display:none}
 .leaflet-tooltip.lbl.minor{font-weight:400}
 .zlow .leaflet-tooltip.lbl.minor,.zlow .leaflet-tooltip.lbl.mid,.zmid .leaflet-tooltip.lbl.minor{display:none}
+.leaflet-tooltip.lbl.on{display:block!important}
 </style>
 </head>
 <body>
@@ -276,7 +282,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v40';
+const APP_VER='v41';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -525,6 +531,8 @@ function lastLine(today,nx,me){
 
 // 地図の下の端に、選んだバス停の「次のバス」を出す（いつも今日の時刻）
 const nbar=document.getElementById('nextbar'),NB_MAX=3;
+// 帯は最初はたたんで1行（いちばん早い便だけ）。広げると方面ごとに出る。広げたかどうかは端末に覚える
+let nbOpen=store.get('nbOpen')==='1';
 function renderBar(){
   const s=sel.value,now=jstNow(),ctx=dayCtx(now);
   // 今日の便がない方面も、平日・土日祝のどちらかに便があれば出して、次の始発を見せる
@@ -532,8 +540,16 @@ function renderBar(){
   // 並び順：今日これから出る便の早い順 → 今日は終わった方面（次の始発の早い順）
   const rows=mergedDeps(s,ctx).filter(x=>names.has(x.name)).map(({name,routes,today,off})=>{const nx=today.find(({t})=>mins(t.at[s])>=now.min),f=nx?null:nextFirst(s,name,now);
     return {name,routes,today,off,nx,f,m:nx?mins(nx.t.at[s]):f?1e5*f.i+mins(f.it.t.at[s]):1e9}}).sort((a,b)=>a.m-b.m);
-  let h=`<div class="nb-h"><span>${esc(s)} から</span><small>${rows.length>NB_MAX?'ほか'+(rows.length-NB_MAX)+'方面・':''}くわしく ▼</small></div>`;
-  if(!rows.length)h+=`<div class="nb-end">ここから出る便はありません。</div>`;
+  if(!nbOpen||!rows.length){
+    const x=rows[0];let h='';
+    if(!x)h=`<div class="nb-r one"><i></i><div class="nb-d"><div>${esc(s)} から</div><div class="sub">ここから出る便はありません</div></div><div></div><div></div></div>`;
+    else{const tm=x.nx?`<b>${x.nx.t.at[s]}</b><span>${left(mins(x.nx.t.at[s])-now.min)}</span>`:x.f?`<b>${x.f.it.t.at[s]}</b><span class="tm">${x.f.when}の始発</span>`:'';
+      h=`<div class="nb-r one"><i style="background:${stripe(x.routes)}"></i><div class="nb-d"><div>${esc(s)} から ${esc(x.name)}</div><div class="sub">${x.nx?'次のバス・'+esc(x.nx.r.short):'今日の便は終わりました'}</div></div>`
+        +`<div class="nb-t">${tm}</div>`+(rows.length>1?`<button type="button" class="nb-tg" aria-expanded="false">ほか${rows.length-1}方面 ▲</button>`:'<div></div>')+'</div>';}
+    nbar.innerHTML=h;nbar.hidden=false;bindTg();
+    document.getElementById('locate').style.bottom=(nbH()+16)+'px';return;
+  }
+  let h=`<div class="nb-h"><span>${esc(s)} から</span><button type="button" class="nb-tg" aria-expanded="true">たたむ ▼</button></div>`;
   rows.slice(0,NB_MAX).forEach(({name,routes,today,off,nx,f})=>{
     if(nx){const ls=today[today.length-1],last=ls===nx?'<span class="lastone">これが最終</span>':`最終 <b>${ls.t.at[s]}</b>`;
       h+=`<div class="nb-r"><i style="background:${stripe(routes)}"></i><div class="nb-d"><div>${esc(name)}</div><div class="sub">${esc(nx.r.short)}・${last}</div></div>`
@@ -541,9 +557,11 @@ function renderBar(){
     h+=`<div class="nb-r"><i style="background:${stripe(routes)}"></i><div class="nb-d"><div>${esc(name)}</div><div class="sub">${today.length?'今日の便は終わりました':off.length===routes.length?esc(off[0].off.why)+'で運休':'今日は便がありません'}</div></div>`
       +(f?`<div class="nb-t"><b>${f.it.t.at[s]}</b><span class="tm">${f.when}の始発</span></div>`:'<div class="nb-t"></div>')+'</div>';
   });
-  nbar.innerHTML=h;nbar.hidden=false;
+  if(rows.length>NB_MAX)h+=`<div class="nb-end">ほか${rows.length-NB_MAX}方面は、下の「くわしく」で</div>`;
+  nbar.innerHTML=h;nbar.hidden=false;bindTg();
   document.getElementById('locate').style.bottom=(nbH()+16)+'px';
 }
+function bindTg(){const b=nbar.querySelector('.nb-tg');if(b)b.onclick=e=>{e.stopPropagation();nbOpen=!nbOpen;store.set('nbOpen',nbOpen?'1':'0');renderBar()}}
 nbar.onclick=()=>{document.getElementById('panel').scrollIntoView({behavior:'smooth'})};
 nbar.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();nbar.onclick()}};
 
@@ -730,12 +748,13 @@ function updateMap(me){
   if(STOP_POS[me])selRing=L.circleMarker(STOP_POS[me],{radius:15,color:'#1f6f4a',weight:3,fillColor:'#1f6f4a',fillOpacity:.2,interactive:false}).addTo(map);
   styleMap();
   if(markers[me])markers[me].bringToFront();
+  for(const [s,m] of Object.entries(markers)){const el=m.getTooltip()&&m.getTooltip().getElement();if(el)el.classList.toggle('on',s===me)}
 }
 // 町全体の範囲（開いたときにバス停がわからない場合だけ使う）
 const homeBounds=L.latLngBounds([...LINE_PATHS.tashiro,...LINE_PATHS.chuo,...LINE_PATHS.kaigan]);
 // 最初から選んだバス停のまわりを出す（町全体を出してから移ると、使わない地図画像まで読んでしまうため）
 map.setView(STOP_POS[sel.value]||homeBounds.getCenter(),STOP_POS[sel.value]?12:10);
-const zcls=()=>{const z=map.getZoom(),c=map.getContainer().classList;c.toggle('zlow',z<12);c.toggle('zmid',z>=12&&z<14)};
+const zcls=()=>{const z=map.getZoom(),c=map.getContainer().classList;c.toggle('zlow',z<13);c.toggle('zmid',z>=13&&z<14)};
 map.on('zoomend',()=>{zcls();styleMap()});zcls();
 
 // バス停を選んだとき：下の画面と、地図の下の端の「次のバス」を更新する（v10から吹き出しはやめて帯にまとめた）
