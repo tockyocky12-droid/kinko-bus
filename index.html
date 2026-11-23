@@ -114,6 +114,9 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .it ol{list-style:none;margin:6px 0 0;padding:0;font-size:14px;line-height:1.5}
 .it li.xf{font-size:12.5px;color:var(--muted);padding-left:14px}
 .gonote{font-size:12.5px;color:var(--muted);margin:6px 2px}
+.sendbtn{margin-top:8px;font:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+.it.past .sendbtn{display:none}
+.opslink{font-size:12.5px;color:var(--muted);margin:14px 2px 4px}
 .tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .grp{margin-top:16px}
 .grp-h{display:flex;align-items:center;gap:8px;margin:0 0 6px}
@@ -280,6 +283,9 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
     <details class="fd"><summary>地図のデータ</summary>
     <p>バス停の位置と路線の道すじは、国土数値情報（国土交通省：バス停留所 令和4年度、バスルート 平成23年度、高速道路時系列 令和7年度）を加工した目安です。点線は、直行バスのフェリー（垂水港〜鴨池港）と、空港バスの大隅縦貫道（道のデータがない区間）です。空港バスの一般道経由の便（1日1往復）は別の道を通ります。背景：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（国土地理院）</p>
     </details>
+    <h4>遅れ・運休を確かめる</h4>
+    <p><a href="https://www.norimono-info.com/" target="_blank" rel="noopener">九州のりものinfo.com</a>（バス・フェリーの運行情報）／<a href="https://www.iwasaki-corp.com/kagoshima_kotsu/" target="_blank" rel="noopener">鹿児島交通のお知らせ</a>／垂水フェリーの運航状況：垂水営業所 <a href="tel:0994320001">0994-32-0001</a></p>
+    <p id="reportp" hidden></p>
     <h4>問い合わせ</h4>
     <p>海岸線・中央線・空港バス・直行バス：鹿児島交通 鹿屋営業所 0994-65-2258（<a href="https://www.iwasaki-corp.com/kagoshima_kotsu/contact/" target="_blank" rel="noopener">お問合せページ</a>）<br>
     田代地区コミュニティバス：錦江町役場 政策企画課 0994-22-3032<br>
@@ -297,13 +303,17 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v45';
+const APP_VER='v46';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
 document.getElementById('srcrev').textContent=TIMETABLE_INFO.revised;
 document.getElementById('srcchk').textContent=TIMETABLE_INFO.checked.replace(/^\d+年/,'');
 document.getElementById('satapdf').href=SATA_INFO.url;document.getElementById('airpdf').href=AIRPORT_INFO.url;document.getElementById('dirpdf').href=DIRECT_INFO.url;
+// 時刻のまちがいを知らせる先（data/timetable.js の REPORT に、メールか電話を入れると出る）
+if(typeof REPORT!=='undefined'&&(REPORT.mail||REPORT.tel||REPORT.url)){const rp=document.getElementById('reportp');
+  const body=encodeURIComponent('バス停：\n路線・便：\nまちがい：\n（アプリの版 '+APP_VER+'）');
+  rp.innerHTML='<b>時刻のまちがいを見つけたら</b>：'+[REPORT.mail?`<a href="mailto:${REPORT.mail}?subject=${encodeURIComponent('きんこうバスナビ 時刻のまちがい')}&body=${body}">メールで知らせる</a>`:'',REPORT.tel?`<a href="tel:${REPORT.tel.replace(/-/g,'')}">${REPORT.tel}</a>`:'',REPORT.url?`<a href="${REPORT.url}" target="_blank" rel="noopener">お問い合わせフォーム</a>`:''].filter(Boolean).join('／')+(REPORT.label?`（${REPORT.label.replace(/[<>&"]/g,'')}）`:'');rp.hidden=false}
 document.getElementById('farepdf').href=FARE_INFO.url;document.getElementById('farepdf2').href=FARE_INFO.urlChuo;document.getElementById('farechk').textContent=FARE_INFO.checked.replace(/^\d+年/,'');
 
 // 端末に保存する記録（同じサイトの森林ナビ・防災ナビと分けるため「bus:」を付ける）
@@ -474,18 +484,35 @@ function renderGo(me,ctx,live,now){
   h+=`<div class="gosum" role="status"><b>${esc(O)}</b><span class="ar">→</span><b>${esc(D)}</b><span>の行き方</span></div>`;
   const L=plans(O,D,ctx);
   if(!L.length){h+=`<div class="none">${live?'今日':(ctx.hol?'土日祝':'平日')}は、${esc(O)}から${esc(D)}へ乗り継ぎ2回までで行ける便がありません。</div>`;}
-  let shown=0;
-  L.forEach(({p,dep,arr})=>{
+  let shown=0;goPlans=L;goCtxLbl=live?`${now.m}/${now.d}（${WD[now.wd]}）`:(ctx.hol?'土日祝':'平日')+'の時刻で';
+  L.forEach(({p,dep,arr},k)=>{
     const past=live&&dep<now.min;
     h+=`<div class="it${past?' past':''}"><div class="it-h"><span class="tm">${hm(dep)} → ${hm(arr)}着</span><span class="sum">${dur(arr-dep)}・${p.length>1?'乗り継ぎ'+(p.length-1)+'回':'乗り継ぎなし'}・${planFare(p)}</span>${live&&!past&&!shown++?`<span class="in">${left(dep-now.min)}</span>`:''}</div><ol>`;
     p.forEach((l,i)=>{if(i)h+=`<li class="xf">${esc(l.from)}で乗り継ぎ（${l.dep-p[i-1].arr}分）</li>`;
       h+=`<li>${rtag(l.r)} ${esc(l.from)} ${hm(l.dep)} → ${esc(l.to)} ${hm(l.arr)}</li>`});
-    h+='</ol></div>';
+    h+=`</ol><button type="button" class="sendbtn" data-k="${k}" aria-label="この行き方を送る（LINEなど）">この行き方を送る</button></div>`;
   });
   if(live&&L.length&&!L.some(x=>x.dep>=now.min))h+=`<div class="none">今日の便は終わりました。「平日」「土日祝」を押すと、ほかの日の行き方が見られます。</div>`;
+  h+=OPS_LINK;
   h+=`<p class="gonote">乗り継ぎは2回まで、乗り継ぎの時間は5分以上で計算しています。直行バス以外で鹿屋から垂水港へ出てフェリーで渡る行き方は入っていません。運賃は大人・現金の普通運賃の合計の目安です。</p>`;
   return h;
 }
+// 「この行き方を送る」：LINEなどで家族に送れる文。スマホの共有画面がなければ文をコピーする
+let goPlans=[],goCtxLbl='';
+function planText({p,dep,arr}){
+  const a=[`【きんこうバスナビ】${goCtxLbl}`,`${p[0].from} ${hm(dep)}発 → ${p[p.length-1].to} ${hm(arr)}着（${dur(arr-dep)}・${planFare(p)}）`];
+  p.forEach((l,i)=>{if(i)a.push(`　${l.from}で乗り継ぎ（${l.dep-p[i-1].arr}分）`);a.push(`・${l.r.short}　${l.from} ${hm(l.dep)} → ${l.to} ${hm(l.arr)}`)});
+  a.push('※時刻表の上の計算です。遅れることがあります','https://tockyocky12-droid.github.io/kinko-bus/');
+  return a.join('\n');
+}
+async function sendPlan(k){
+  const t=planText(goPlans[k]);
+  try{if(navigator.share){await navigator.share({text:t});return}}catch(e){if(e&&e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(t);toast('行き方の文をコピーしました。LINEなどに貼り付けて送れます')}
+  catch(e){prompt('この文をコピーして送ってください',t)}
+}
+// 遅れ・運休を確かめるリンク（台風や事故のとき）
+const OPS_LINK='<p class="opslink">台風や事故のときの遅れ・運休 → <a href="https://www.norimono-info.com/" target="_blank" rel="noopener">九州のりものinfo.com（運行情報）</a></p>';
 // まとめた方面の色（路線が2つ以上なら、色を縦に分ける）
 const stripe=rs=>rs.length<2?rs[0].color:'linear-gradient(to bottom,'+rs.map((r,i)=>`${r.color} ${i*100/rs.length}% ${(i+1)*100/rs.length}%`).join(',')+')';
 const rtag=r=>`<span class="rtag" style="background:${r.color}">${esc(r.short)}</span>`;
@@ -638,6 +665,7 @@ function render(){
     h+='</div>';
   });
   if(!h)h='<div class="none">このバス停から出る便はありません（終点です）。</div>';
+  h+=OPS_LINK;
   const vn=document.getElementById('v-next');vn.innerHTML=h;
   vn.querySelectorAll('.trip').forEach(b=>b.onclick=()=>{const k=b.dataset.k;open=open===k?null:k;render()});
   // 時刻表（路線別）
@@ -659,6 +687,7 @@ function render(){
   if(tab==='go'){vg.innerHTML=renderGo(me,ctx,live,now);
     const setTo=d=>{goTo=d;if(GO_DEST.includes(d)&&!farSide(me)){goDest=d;store.set('goDest',d)}if(!farSide(d)){goHome=d;store.set('goHome',d)}render()};
     vg.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>setTo(b.dataset.d));
+    vg.querySelectorAll('.sendbtn').forEach(b=>b.onclick=()=>sendPlan(+b.dataset.k));
     vg.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{selectStop(b.dataset.f,{fly:true});toast(`出発を「${b.dataset.f}」にしました`);const g=document.getElementById('gofrom');if(g)g.scrollIntoView({block:'center',behavior:'smooth'})});
     document.getElementById('gofrom').onclick=()=>document.getElementById('stopbtn').click();
     const g2=vg.querySelector('#goto2');if(g2)g2.onchange=()=>{if(g2.value)setTo(g2.value)}}

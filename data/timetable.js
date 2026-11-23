@@ -26,6 +26,8 @@ const SATA_UP='石蔵で佐多地区のバスから接続',SATA_DN='石蔵で佐
 // アプリでは錦江町から使う区間（鹿屋市役所前・鹿屋〜鹿児島空港）だけを載せる。東笠之原・東団地前・寿中央・旭原・道の駅あらさの・高隈など途中のバス停は省略
 // 直行バス：鹿児島交通「鹿屋～鹿児島直行バス 運行時刻のお知らせ」（2026年7月18日改正。鹿屋市のページに掲載）。v36で時刻を照合済み・運賃を追加
 // 土日祝の時刻（週末ダイヤ）は「土曜・日曜と、土日の前後につながる祝日・振替休日」だけ。平日にぽつんとある祝日は平日の時刻（holRule:'weekendAdj'）
+// 時刻のまちがいを知らせる先（v46〜）。mail・tel・url のどれかを入れると、画面下に「時刻のまちがいを見つけたら」が出る（空なら出さない）
+const REPORT={label:'',mail:'',tel:'',url:''};
 const DIRECT_INFO={revised:'2026年7月18日改正',checked:'2026年11月21日',url:'https://www.city.kanoya.lg.jp/documents/2077/tyokkoubasujikokuhyou20260718.pdf',page:'https://www.city.kanoya.lg.jp/koutsuu/kurashi/kotsu/chokkobus.html'};
 const AIRPORT_INFO={revised:'令和8年4月1日改正',checked:'2026年11月20日',
   url:'https://www.iwasaki-corp.com/kagoshima_kotsu/wp-content/uploads/sites/8/2026/03/e7c442366f345c01ba3ffab7c7cdc1f2.pdf'};
