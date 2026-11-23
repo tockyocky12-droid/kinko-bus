@@ -99,8 +99,12 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .gosel button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .gosel.dir button{font-size:13px;padding:6px 12px}
 .golbl{margin:10px 2px 0;font-size:13px;color:var(--muted)}.golbl b{color:var(--fg)}
-#gofrom{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-size:17px}
+#gofrom{font:inherit;font-weight:700;padding:7px 14px;border-radius:999px;border:1.5px solid var(--accent);background:var(--accent);color:var(--accent-fg);font-size:16px;cursor:pointer}
 .gosel.qf button{font-size:13.5px;font-weight:400;padding:6px 11px;border-style:dashed}
+.gosel.qf.hl button{font-weight:700;border-style:solid;border-color:var(--accent)}
+.gohead{margin:10px 2px 0;font-size:17px;font-weight:700}
+.gofromrow{display:flex;align-items:center;gap:8px;margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line)}.gofromrow .golbl{margin:0;font-size:15px;color:var(--fg);font-weight:700}
+.gohint{margin:6px 2px 0;font-size:13.5px;color:var(--fg);background:var(--soft);border-radius:8px;padding:6px 10px}
 .gosum{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin:12px 0 4px;padding:10px 12px;border-radius:12px;background:var(--soft);border:1.5px solid var(--accent);font-size:16px}
 .gosum b{font-size:19px}.gosum .ar{color:var(--accent);font-weight:700}
 .gosel-other.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
@@ -303,7 +307,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v47';
+const APP_VER='v48';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -472,13 +476,18 @@ function renderGo(me,ctx,live,now){
   // 乗るバス停が変わったら、行き先を決め直す（鹿児島空港・中央駅・鹿屋にいるときは錦江町方面＝帰り道、錦江町にいるときは前に選んだ行き先）
   if(me!==goLastMe||!goTo){const prev=goLastMe;goLastMe=me;goTo=farSide(me)?(goHome||(prev&&!farSide(prev)?prev:null)||favs.find(f=>!farSide(f))||'大根占'):goDest}
   const quick=[...favs,...(farSide(me)&&goTo&&!farSide(goTo)?[goTo]:[]),'鹿児島空港','鹿児島中央駅','鹿屋'].filter((x,i,a)=>x!==me&&a.indexOf(x)===i);
-  let h=`<p class="golbl">出発（乗るバス停）</p><div class="gosel"><button type="button" id="gofrom" aria-label="出発は${esc(me)}（押すとほかのバス停を選べます）">✓ ${esc(me)} ▼</button></div>`
-    +(quick.length?`<p class="golbl">出発を変える：</p><div class="gosel qf">${quick.map(x=>`<button type="button" data-f="${esc(x)}">${favs.includes(x)?'★ ':''}${esc(x)}</button>`).join('')}</div>`:'');
+  // 行き先を先に選ぶ（v48）。出発は最初から「乗るバス停」が入っているので、その下に小さくまとめる
   const btn=d=>d===me?'':`<button type="button" data-d="${esc(d)}" aria-pressed="${d===goTo}">${esc(d)}へ</button>`;
   const others=ALL.filter(x=>!farSide(x)&&!HOME.includes(x)&&x!==me);
-  h+=`<p class="golbl">行き先：鹿屋・鹿児島方面</p><div class="gosel">${GO_DEST.map(btn).join('')}</div>`
-    +`<p class="golbl">行き先：錦江町方面</p><div class="gosel">${HOME.map(btn).join('')}`
+  let h=`<p class="gohead">どこへ行きますか？</p>`
+    +`<p class="golbl">鹿屋・鹿児島方面</p><div class="gosel">${GO_DEST.map(btn).join('')}</div>`
+    +`<p class="golbl">錦江町方面</p><div class="gosel">${HOME.map(btn).join('')}`
     +`<select id="goto2" class="gosel-other${others.includes(goTo)?' on':''}" aria-label="ほかのバス停"><option value="">ほかのバス停 ▼</option>${others.map(x=>`<option${x===goTo?' selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
+  // 出発も行き先も錦江町側のとき：鹿児島空港などから帰る人に、出発を変えるよう促す
+  const bothHome=goTo&&!farSide(me)&&!farSide(goTo);
+  h+=`<div class="gofromrow"><span class="golbl">出発：</span><button type="button" id="gofrom" aria-label="出発は${esc(me)}（押すとほかのバス停を選べます）">✓ ${esc(me)} ▼</button></div>`
+    +(bothHome?`<p class="gohint">鹿児島空港・鹿児島中央駅・鹿屋から帰るときは、下のボタンで出発を変えてください。</p>`:'')
+    +(quick.length?`<p class="golbl">出発を変える：</p><div class="gosel qf${bothHome?' hl':''}">${quick.map(x=>`<button type="button" data-f="${esc(x)}">${favs.includes(x)?'★ ':''}${esc(x)}</button>`).join('')}</div>`:'');
   const O=me,D=goTo;
   if(O===D)return h+`<div class="none">行き先を選んでください。</div>`;
   h+=`<div class="gosum" role="status"><b>${esc(O)}</b><span class="ar">→</span><b>${esc(D)}</b><span>の行き方</span></div>`;
