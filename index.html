@@ -99,7 +99,10 @@ select{width:100%;font:inherit;font-size:19px;font-weight:700;padding:10px 12px;
 .gosel button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .gosel.dir button{font-size:13px;padding:6px 12px}
 .golbl{margin:10px 2px 0;font-size:13px;color:var(--muted)}.golbl b{color:var(--fg)}
-#gofrom{border-color:var(--accent);color:var(--fg)}
+#gofrom{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-size:17px}
+.gosel.qf button{font-size:13.5px;font-weight:400;padding:6px 11px;border-style:dashed}
+.gosum{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin:12px 0 4px;padding:10px 12px;border-radius:12px;background:var(--soft);border:1.5px solid var(--accent);font-size:16px}
+.gosum b{font-size:19px}.gosum .ar{color:var(--accent);font-weight:700}
 .gosel-other.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .gosel-other{font:inherit;font-size:14px;padding:7px 10px;border:1.5px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);max-width:100%}
 .it{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;background:var(--panel)}
@@ -286,7 +289,7 @@ footer .pbtn{border:1px solid var(--line);background:var(--panel);color:var(--fg
 <script src="./data/special.js"></script>
 <script>
 // アプリの版（sw.js の VER と必ず同じにする。更新のたびに上げる）
-const APP_VER='v43';
+const APP_VER='v44';
 document.getElementById('ver').textContent=APP_VER;
 document.getElementById('vtag').textContent='試作 '+APP_VER;
 document.getElementById('srcpdf').href=TIMETABLE_INFO.url;
@@ -451,7 +454,8 @@ function renderGo(me,ctx,live,now){
   // 乗るバス停が変わったら、行き先を決め直す（鹿児島空港・中央駅・鹿屋にいるときは錦江町方面＝帰り道、錦江町にいるときは前に選んだ行き先）
   if(me!==goLastMe||!goTo){const prev=goLastMe;goLastMe=me;goTo=farSide(me)?(goHome||(prev&&!farSide(prev)?prev:null)||favs.find(f=>!farSide(f))||'大根占'):goDest}
   const quick=[...favs,...(farSide(me)&&goTo&&!farSide(goTo)?[goTo]:[]),'鹿児島空港','鹿児島中央駅','鹿屋'].filter((x,i,a)=>x!==me&&a.indexOf(x)===i);
-  let h=`<p class="golbl">出発（乗るバス停）</p><div class="gosel"><button type="button" id="gofrom" class="cur">${esc(me)} ▼</button>${quick.map(x=>`<button type="button" data-f="${esc(x)}">${favs.includes(x)?'★ ':''}${esc(x)}</button>`).join('')}</div>`;
+  let h=`<p class="golbl">出発（乗るバス停）</p><div class="gosel"><button type="button" id="gofrom" aria-label="出発は${esc(me)}（押すとほかのバス停を選べます）">✓ ${esc(me)} ▼</button></div>`
+    +(quick.length?`<p class="golbl">出発を変える：</p><div class="gosel qf">${quick.map(x=>`<button type="button" data-f="${esc(x)}">${favs.includes(x)?'★ ':''}${esc(x)}</button>`).join('')}</div>`:'');
   const btn=d=>d===me?'':`<button type="button" data-d="${esc(d)}" aria-pressed="${d===goTo}">${esc(d)}へ</button>`;
   const others=ALL.filter(x=>!farSide(x)&&!HOME.includes(x)&&x!==me);
   h+=`<p class="golbl">行き先：鹿屋・鹿児島方面</p><div class="gosel">${GO_DEST.map(btn).join('')}</div>`
@@ -459,6 +463,7 @@ function renderGo(me,ctx,live,now){
     +`<select id="goto2" class="gosel-other${others.includes(goTo)?' on':''}" aria-label="ほかのバス停"><option value="">ほかのバス停 ▼</option>${others.map(x=>`<option${x===goTo?' selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
   const O=me,D=goTo;
   if(O===D)return h+`<div class="none">行き先を選んでください。</div>`;
+  h+=`<div class="gosum" role="status"><b>${esc(O)}</b><span class="ar">→</span><b>${esc(D)}</b><span>の行き方</span></div>`;
   const L=plans(O,D,ctx);
   if(!L.length){h+=`<div class="none">${live?'今日':(ctx.hol?'土日祝':'平日')}は、${esc(O)}から${esc(D)}へ乗り継ぎ2回までで行ける便がありません。</div>`;}
   let shown=0;
@@ -646,7 +651,7 @@ function render(){
   if(tab==='go'){vg.innerHTML=renderGo(me,ctx,live,now);
     const setTo=d=>{goTo=d;if(GO_DEST.includes(d)&&!farSide(me)){goDest=d;store.set('goDest',d)}if(!farSide(d)){goHome=d;store.set('goHome',d)}render()};
     vg.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>setTo(b.dataset.d));
-    vg.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>selectStop(b.dataset.f,{fly:true}));
+    vg.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{selectStop(b.dataset.f,{fly:true});toast(`出発を「${b.dataset.f}」にしました`);const g=document.getElementById('gofrom');if(g)g.scrollIntoView({block:'center',behavior:'smooth'})});
     document.getElementById('gofrom').onclick=()=>document.getElementById('stopbtn').click();
     const g2=vg.querySelector('#goto2');if(g2)g2.onchange=()=>{if(g2.value)setTo(g2.value)}}
   const va=document.getElementById('v-all');va.innerHTML=a;

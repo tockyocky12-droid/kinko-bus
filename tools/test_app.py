@@ -233,7 +233,7 @@ with sync_playwright() as p:
     pg.click('[data-d="田代麓"]'); pg.wait_for_timeout(200)
     check(pg.get_attribute('[data-d="田代麓"]', 'aria-pressed') == 'true' and '田代麓' in pg.inner_text('#v-go'), '行き先から：帰りの行き先を田代麓に変えられる')
     pg.select_option('#stop', '鹿児島中央駅'); pg.wait_for_timeout(300)
-    check(pg.get_attribute('[data-d="田代麓"]', 'aria-pressed') == 'true' and '鹿児島中央駅 ▼' in pg.inner_text('#v-go'), '鹿児島中央駅を選んでも、帰りの行き先は田代麓のまま')
+    check(pg.get_attribute('[data-d="田代麓"]', 'aria-pressed') == 'true' and '✓ 鹿児島中央駅 ▼' in pg.inner_text('#v-go') and '鹿児島中央駅\n→\n田代麓' in pg.inner_text('.gosum'), '鹿児島中央駅を選んでも、帰りの行き先は田代麓のまま')
     pg.select_option('#stop', '内之牧'); pg.wait_for_timeout(300); g = pg.inner_text('#v-go')
     check('乗り継ぎ2回' in g and pg.get_attribute('#tab-go', 'aria-selected') == 'true', '行き先から：内之牧→空港は乗り継ぎ2回、バス停を変えても画面はそのまま')
     c.close(); e7 += e9
