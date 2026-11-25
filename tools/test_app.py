@@ -254,10 +254,12 @@ with sync_playwright() as p:
     check(big and pg.inner_text('#bigtxt') == '文字 小' and pg.evaluate('document.documentElement.scrollWidth') <= 390 and tabh < 70, f'文字を大きく：覚えている・横にはみ出さない・タブが1行（{tabh:.0f}px）')
     c.close(); e7 += e10
     c, pg, e11 = at((2026, 11, 23, 10, 0), '神川')
+    k = pg.evaluate("(()=>{const r=ROUTES.find(x=>x.id==='kaigan'),c=ROUTES.find(x=>x.id==='chuo');const i=r.dirs.a.stops.indexOf('南大隅高校前'),j=c.dirs.b.stops.indexOf('南大隅高校前');return [r.trips[0].times[i],c.trips[1].times[j],FARES.kaigan.yen[FARES.kaigan.stops.indexOf('南大隅高校前')][FARES.kaigan.stops.indexOf('鹿屋')]]})()")
+    check(k == ['6:16', '12:19', 1010], '南大隅高校前：海岸線 6:16・中央線 12:19・鹿屋まで1,010円（v50）')
     pg.click('.chip[data-r=kaigan]'); pg.wait_for_timeout(600)
     fb = pg.inner_text('#focusbar')
     op = pg.evaluate("[lines.chuo.find(p=>!p.casing).l.options.opacity, lines.kaigan.find(p=>!p.casing).l.options.opacity, focusLines.length>0]")
-    check('主なバス停 9か所' in fb, '海岸線は「主なバス停」と表示')
+    check('主なバス停 10か所' in fb, '海岸線は「主なバス停」と表示（南大隅高校前を足して10か所）')
     check('海岸線' in fb and op[0] < 0.5 and op[1] == 1 and op[2] and pg.get_attribute('.chip[data-r=kaigan]', 'aria-pressed') == 'true', f'路線のボタン：選んだ路線だけ濃く、ほかは薄く、上に路線名（{op}）')
     pg.click('.chip[data-r=kaigan]'); pg.wait_for_timeout(300)
     check(pg.is_hidden('#focusbar') and pg.evaluate("lines.chuo.find(p=>!p.casing).l.options.opacity") == 1, '同じボタンをもう一度押すと全路線の表示に戻る')
